@@ -595,6 +595,22 @@ function App() {
   };
 
   const handleNext = () => {
+    // Validation Check
+    const currentQuestions = sections[step].questions || [];
+    const missingFields = currentQuestions.filter(q => {
+      // Skip validation for informational types or specific optional fields
+      if (q.type === 'waitlist-cta' || q.id === 'userSuggestions' || q.id === 'pmsReturn') return false; 
+      
+      const val = formData[q.id];
+      if (Array.isArray(val)) return val.length === 0;
+      return !val || val === ''; 
+    });
+
+    if (missingFields.length > 0) {
+      alert(`Please answer the following before proceeding:\n- ${missingFields.map(q => q.label).join('\n- ')}`);
+      return;
+    }
+
     if (isLastStep) {
       handleSubmitSurvey();
     } else {
