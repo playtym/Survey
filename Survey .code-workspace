@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../Survey "
+		},
+		{
+			"path": "../Downloads/Private & Shared 2"
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"npm install": true
+		}
+	}
+}

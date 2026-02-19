@@ -1,0 +1,492 @@
+/* ═══════════════════════════════════════════════════
+   Modern AI-Inspired Survey — Mobile First
+   ═══════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0a0f;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.07);
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --accent: #7c5cfc;
+  --accent-glow: rgba(124, 92, 252, 0.35);
+  --accent-soft: rgba(124, 92, 252, 0.12);
+  --accent-text: #a78bfa;
+  --text: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.1);
+  --success-border: rgba(52, 211, 153, 0.25);
+  --error: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.1);
+  --error-border: rgba(248, 113, 113, 0.25);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 50px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Background ambient glow */
+body::before {
+  content: '';
+  position: fixed;
+  top: -40%;
+  left: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(124, 92, 252, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -30%;
+  right: -20%;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Header ─── */
+.survey-header {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+
+.survey-header .logo-icon {
+  font-size: 2rem;
+  margin-bottom: 6px;
+  display: block;
+}
+
+h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.step-indicator {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ─── Progress Bar ─── */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 99px;
+  margin: 16px 0 20px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ─── Card ─── */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex: 1;
+  animation: cardIn 0.35s ease-out;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: -0.01em;
+}
+
+/* ─── Form Content ─── */
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-group > label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ─── Text / Textarea Inputs ─── */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+textarea {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.95rem;
+  padding: 12px 14px;
+  width: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ─── Bubble / Chip Styles ─── */
+.bubble-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bubble-container-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bubble {
+  padding: 9px 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 0.85rem;
+  font-weight: 450;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bubble:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text);
+}
+
+.bubble:active {
+  transform: scale(0.97);
+}
+
+.bubble.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 550;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ─── Counter ─── */
+.counter-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--glass-border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-family: var(--font);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  line-height: 1;
+}
+
+.counter-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.counter-btn:active {
+  transform: scale(0.92);
+}
+
+/* ─── Range / Slider ─── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--surface);
+  border-radius: 99px;
+  outline: none;
+  border: none;
+  margin: 8px 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--accent-glow);
+  border: 2px solid var(--bg);
+  transition: transform var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--accent-glow);
+  border: 2px solid var(--bg);
+}
+
+/* ─── Box-Split (Slider Allocator) ─── */
+.box-split-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ─── Buttons ─── */
+button {
+  font-family: var(--font);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.navigation-buttons button {
+  flex: 1;
+  padding: 13px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.navigation-buttons button:first-child {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.navigation-buttons button:first-child:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.navigation-buttons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, var(--accent), #a78bfa) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.primary-btn:hover {
+  box-shadow: 0 6px 28px rgba(124, 92, 252, 0.5);
+  transform: translateY(-1px);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+}
+
+/* ─── Mobile Optimizations ─── */
+@media (max-width: 480px) {
+  #root {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  .card {
+    padding: 20px 16px;
+    border-radius: 12px;
+  }
+
+  .card h2 {
+    font-size: 1.05rem;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+
+  .form-content {
+    gap: 20px;
+  }
+
+  .input-group > label {
+    font-size: 0.85rem;
+  }
+
+  .bubble {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+
+  .bubble-container {
+    gap: 6px;
+  }
+
+  .navigation-buttons {
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  .navigation-buttons button {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+  }
+}
+
+/* ─── Safe area for notched phones ─── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .navigation-buttons {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 99px;
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* ─── QR Code ─── */
+.upi-qr {
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  border: 3px solid rgba(124, 92, 252, 0.3);
+  padding: 8px;
+  background: white;
+  display: block;
+  margin: 0 auto 8px;
+  box-shadow: 0 0 24px rgba(124, 92, 252, 0.2);
+}
+
+.qr-instruction {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0 0 14px;
+}
+
