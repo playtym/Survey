@@ -1,8 +1,17 @@
 import { useState, useMemo, useCallback } from 'react'
 import './index.css'
 
-// Haptic feedback — light tap (10ms), medium (20ms), heavy (30ms)
+// Haptic feedback — light tap (10ms), medium (20ms)
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
+
+// Fast tap handler — fires on touchEnd to bypass 300ms click delay on mobile
+const fastTap = (handler) => {
+  let touched = false;
+  return {
+    onTouchEnd: (e) => { e.preventDefault(); touched = true; handler(); },
+    onClick: () => { if (!touched) handler(); touched = false; },
+  };
+};
 
 function App() {
   const [step, setStep] = useState(0);
@@ -617,7 +626,7 @@ function App() {
               <div 
                 key={opt}
                 className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
-                onClick={() => setField(q.id, opt)}
+                {...fastTap(() => setField(q.id, opt))}
               >
                 {opt}
               </div>
@@ -633,7 +642,7 @@ function App() {
                 <div 
                   key={opt}
                   className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
-                  onClick={() => setField(q.id, opt)}
+                  {...fastTap(() => setField(q.id, opt))}
                 >
                   {opt}
                 </div>
@@ -655,7 +664,7 @@ function App() {
               <div 
                 key={opt}
                 className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
-                onClick={() => toggleMultiSelect(q.id, opt)}
+                {...fastTap(() => toggleMultiSelect(q.id, opt))}
               >
                 {opt}
               </div>
@@ -671,7 +680,7 @@ function App() {
                 <div 
                   key={opt}
                   className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
-                  onClick={() => toggleMultiSelect(q.id, opt)}
+                  {...fastTap(() => toggleMultiSelect(q.id, opt))}
                 >
                   {opt}
                 </div>
@@ -689,9 +698,9 @@ function App() {
       case 'counter':
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button className="counter-btn" onClick={() => setField(q.id, Math.max(0, (formData[q.id] || 0) - 1))}>−</button>
+            <button className="counter-btn" {...fastTap(() => setField(q.id, Math.max(0, (formData[q.id] || 0) - 1)))}>−</button>
             <span style={{ fontSize: '1.3rem', fontWeight: '600', minWidth: '2rem', textAlign: 'center', color: 'var(--text)' }}>{formData[q.id] || 0}</span>
-            <button className="counter-btn" onClick={() => setField(q.id, (formData[q.id] || 0) + 1)}>+</button>
+            <button className="counter-btn" {...fastTap(() => setField(q.id, (formData[q.id] || 0) + 1))}>+</button>
           </div>
         );
       
@@ -1122,8 +1131,8 @@ function App() {
           </div>
           
           <div className="navigation-buttons">
-            <button onClick={prevStep} disabled={step === 0}>← Back</button>
-            <button onClick={handleNext} className="primary-btn">{isLastStep ? 'Submit ✓' : 'Continue →'}</button>
+            <button {...fastTap(prevStep)} disabled={step === 0}>← Back</button>
+            <button {...fastTap(handleNext)} className="primary-btn">{isLastStep ? 'Submit ✓' : 'Continue →'}</button>
           </div>
         </div>
       )}
