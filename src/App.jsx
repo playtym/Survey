@@ -570,7 +570,7 @@ function App() {
     console.log(formData);
     
     // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOWnLXbIMRUzyWN0LOQthn55NP6HPXl18xEgBdu1xlVmZiMhUnvImuf6SbTb3QP-8jbw/exec"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDNKzn8s_UcPLW7f-dbenda0UxJ0UXzKAR5RusVFOy_DmDKqrHL6EhFry9hly8qILb2g/exec"; 
     
     try {
       if (GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
@@ -983,7 +983,7 @@ function App() {
                   {/* UPI Pay Button */}
                   {/* QR Code */}
                   <div style={{ margin: '4px 0 16px', textAlign: 'center' }}>
-                    <img src="/qr.png" alt="Scan to Pay ₹100" className="upi-qr" />
+                    <img src="./qr.png" alt="Scan to Pay ₹100" className="upi-qr" />
                     <p className="qr-instruction">Scan with PhonePe / GPay / Paytm</p>
                   </div>
 
