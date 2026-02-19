@@ -593,18 +593,18 @@ function App() {
   const handleSubmitSurvey = async () => {
     console.log(formData);
     
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLfzZV52AjwFQl4SJpbwADDi5SragxZIgZlMzrqKHLJEf_t_oxHyV-asgWnFOhkuokJw/exec"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMXxRRmtle-94ZA4Ztpdu6192uxbPgT4E-kDyLeSQzgG1nxt2ZV8LaeWICKXHRF5_PcA/exec"; 
     
     try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      console.log("Submitted to Google Sheets");
+      // Use GET with data param — POST redirects fail silently on Google Apps Script
+      const encoded = encodeURIComponent(JSON.stringify(formData));
+      const url = `${GOOGLE_SCRIPT_URL}?data=${encoded}`;
+      
+      // Use an Image beacon — guaranteed to follow redirects without CORS issues
+      const img = new Image();
+      img.src = url;
+      
+      console.log("Submitted to Google Sheets via GET");
     } catch (error) {
       console.error("Error submitting form", error);
     }

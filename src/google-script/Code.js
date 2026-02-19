@@ -1,8 +1,16 @@
 function doGet(e) {
+  // If 'data' param exists, treat as form submission
+  if (e && e.parameter && e.parameter.data) {
+    return handleSubmission(e.parameter.data);
+  }
   return ContentService.createTextOutput("Survey Backend is Active. Use POST to submit data.");
 }
 
 function doPost(e) {
+  return handleSubmission(e.postData.contents);
+}
+
+function handleSubmission(rawData) {
   var lock = LockService.getScriptLock();
   lock.tryLock(10000);
 
@@ -18,7 +26,7 @@ function doPost(e) {
     }
 
     var sheet = doc.getSheets()[0];
-    var data = JSON.parse(e.postData.contents);
+    var data = JSON.parse(rawData);
     var lastCol = sheet.getLastColumn();
     var headers = [];
 
