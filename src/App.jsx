@@ -576,15 +576,16 @@ function App() {
   };
 
   const handleNext = () => {
-    // Validation Check
+    // Validation: a field is valid if it exists in formData and is not empty
     const currentQuestions = sections[step].questions || [];
     const missingFields = currentQuestions.filter(q => {
-      // Skip validation for informational types or specific optional fields
       if (q.type === 'waitlist-cta' || q.id === 'userSuggestions' || q.id === 'pmsReturn') return false; 
       
       const val = formData[q.id];
+      if (val === undefined || val === null) return true;
       if (Array.isArray(val)) return val.length === 0;
-      return !val || val === ''; 
+      if (typeof val === 'string') return val.trim() === '';
+      return false; // numbers, booleans, etc. are always valid
     });
 
     if (missingFields.length > 0) {

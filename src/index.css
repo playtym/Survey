@@ -31,7 +31,7 @@
   --radius-sm: 10px;
   --radius-pill: 50px;
   --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.15s ease-out;
 }
 
 html {
@@ -129,8 +129,7 @@ h1 {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), #a78bfa);
   border-radius: 99px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 12px var(--accent-glow);
+  transition: width 0.3s ease-out;
 }
 
 /* ─── Card ─── */
@@ -139,16 +138,7 @@ h1 {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 24px 20px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   flex: 1;
-  animation: cardIn 0.25s ease-out;
-  will-change: transform, opacity;
-}
-
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 .card h2 {
@@ -251,7 +241,7 @@ textarea {
 }
 
 .bubble:active {
-  transform: scale(0.97);
+  opacity: 0.8;
 }
 
 .bubble.selected {
@@ -259,7 +249,6 @@ textarea {
   border-color: var(--accent);
   color: var(--accent-text);
   font-weight: 550;
-  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 /* ─── Counter ─── */
@@ -289,7 +278,7 @@ textarea {
 }
 
 .counter-btn:active {
-  transform: scale(0.92);
+  opacity: 0.8;
 }
 
 /* ─── Range / Slider ─── */
@@ -383,20 +372,14 @@ button {
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, var(--accent), #a78bfa) !important;
+  background: var(--accent) !important;
   color: white !important;
   border: none !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 20px var(--accent-glow);
-}
-
-.primary-btn:hover {
-  box-shadow: 0 6px 28px rgba(124, 92, 252, 0.5);
-  transform: translateY(-1px);
 }
 
 .primary-btn:active {
-  transform: translateY(0);
+  opacity: 0.85;
 }
 
 /* ─── Mobile Optimizations ─── */
@@ -483,7 +466,7 @@ button {
   background: white;
   display: block;
   margin: 0 auto 8px;
-  box-shadow: 0 0 24px rgba(124, 92, 252, 0.2);
+
 }
 
 .qr-instruction {
