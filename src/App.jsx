@@ -553,44 +553,25 @@ function App() {
   const currentSection = sections[step];
   const isLastStep = step === sections.length - 1;
 
-  const downloadCSV = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + Object.keys(formData).join(",") + "\n" 
-      + Object.values(formData).map(v => Array.isArray(v) ? `"${v.join(';')}"` : `"${v}"`).join(",");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `survey_data_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleSubmitSurvey = async () => {
     console.log(formData);
     
-    // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLfzZV52AjwFQl4SJpbwADDi5SragxZIgZlMzrqKHLJEf_t_oxHyV-asgWnFOhkuokJw/exec"; 
     
     try {
-      if (GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors", // Important to avoid CORS errors with Google Apps Script
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        });
-        console.log("Submitted to Google Sheets");
-      } else {
-        console.warn("Google Script URL not set. Data not saved to Sheets.");
-      }
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      console.log("Submitted to Google Sheets");
     } catch (error) {
       console.error("Error submitting form", error);
     }
 
-    downloadCSV();
     setSubmitted(true);
   };
 
