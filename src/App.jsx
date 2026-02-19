@@ -570,7 +570,7 @@ function App() {
     console.log(formData);
     
     // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL
-    const GOOGLE_SCRIPT_URL = "YOUR_WEB_APP_URL_HERE"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOWnLXbIMRUzyWN0LOQthn55NP6HPXl18xEgBdu1xlVmZiMhUnvImuf6SbTb3QP-8jbw/exec"; 
     
     try {
       if (GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
