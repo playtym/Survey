@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback } from 'react'
 import './index.css'
 
+// Haptic feedback — light tap (10ms), medium (20ms), heavy (30ms)
+const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
 
 function App() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({});
 
   const setField = useCallback((name, value) => {
+    haptic();
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
@@ -16,6 +19,7 @@ function App() {
   }, []);
 
   const toggleMultiSelect = useCallback((name, value) => {
+    haptic();
     setFormData(prev => {
       const current = prev[name] || [];
       const newValues = current.includes(value)
@@ -28,8 +32,8 @@ function App() {
   const [submitted, setSubmitted] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
 
-  const nextStep = () => setStep(s => s + 1);
-  const prevStep = () => setStep(s => s - 1);
+  const nextStep = () => { haptic(20); setStep(s => s + 1); };
+  const prevStep = () => { haptic(20); setStep(s => s - 1); };
 
   // UPI Payment — open UPI app directly
   const UPI_ID = '7348884111@ibl';
