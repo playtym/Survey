@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import './index.css'
 
 
@@ -6,21 +6,24 @@ function App() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({});
 
-  const setField = (name, value) => {
+  const setField = useCallback((name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleTextChange = (e) => {
-    setField(e.target.name, e.target.value);
-  };
+  const handleTextChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const toggleMultiSelect = (name, value) => {
-    const current = formData[name] || [];
-    const newValues = current.includes(value) 
-      ? current.filter(v => v !== value)
-      : [...current, value];
-    setField(name, newValues);
-  };
+  const toggleMultiSelect = useCallback((name, value) => {
+    setFormData(prev => {
+      const current = prev[name] || [];
+      const newValues = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      return { ...prev, [name]: newValues };
+    });
+  }, []);
 
   const [submitted, setSubmitted] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
@@ -48,8 +51,8 @@ function App() {
   const satisfaction = ['Very Satisfied', 'Satisfied', 'Neutral', 'Dissatisfied'];
   const insuranceTypes = ['Life/Term', 'Health', 'Vehicle', 'Home', 'None'];
 
-  // Define survey logic
-  const sections = [
+  // Define survey logic — memoized to avoid rebuilding on every render
+  const sections = useMemo(() => [
     // ─── SECTION 1: About You ───
     {
       id: 'personal',
@@ -548,7 +551,7 @@ function App() {
         }
       ]
     }
-  ];
+  ], [formData]);
 
   const currentSection = sections[step];
   const isLastStep = step === sections.length - 1;
