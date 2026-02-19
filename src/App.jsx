@@ -1,13 +1,33 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import './index.css'
 
 // Haptic feedback
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
 
+// Generate a unique session ID so partial + complete rows can be correlated
+const SESSION_ID = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMXxRRmtle-94ZA4Ztpdu6192uxbPgT4E-kDyLeSQzgG1nxt2ZV8LaeWICKXHRF5_PcA/exec";
+
+// Fire-and-forget beacon to Google Sheets
+function sendBeacon(data) {
+  try {
+    const payload = { ...data, _sessionId: SESSION_ID };
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const url = `${GOOGLE_SCRIPT_URL}?data=${encoded}`;
+    // navigator.sendBeacon is reliable even on page close; Image fallback otherwise
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url);
+    } else {
+      new Image().src = url;
+    }
+  } catch (e) { /* silent */ }
+}
+
 function App() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({});
   const touchedRef = useRef(false);
+  const submittedRef = useRef(false);
 
   const setField = useCallback((name, value) => {
     haptic();
@@ -61,6 +81,12 @@ function App() {
 
   const [submitted, setSubmitted] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
+
+  // Keep a mutable ref to formData so event listeners always see latest
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+  const stepRef = useRef(step);
+  stepRef.current = step;
 
   const nextStep = useCallback(() => { haptic(20); setStep(s => s + 1); }, []);
   const prevStep = useCallback(() => { haptic(20); setStep(s => s - 1); }, []);
@@ -590,25 +616,34 @@ function App() {
   const currentSection = sections[step];
   const isLastStep = step === sections.length - 1;
 
+  // --- Auto-save: partial responses on every step change ---
+  useEffect(() => {
+    if (step > 0 && !submittedRef.current && Object.keys(formData).length > 0) {
+      sendBeacon({ ...formData, _status: 'partial', _step: step });
+    }
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- Save on page exit (tab close, navigate away, app switch on mobile) ---
+  useEffect(() => {
+    const saveOnExit = () => {
+      if (!submittedRef.current && Object.keys(formDataRef.current).length > 0) {
+        sendBeacon({ ...formDataRef.current, _status: 'abandoned', _step: stepRef.current });
+      }
+    };
+    // visibilitychange fires reliably on mobile when user switches apps / closes tab
+    const onVisChange = () => { if (document.visibilityState === 'hidden') saveOnExit(); };
+    document.addEventListener('visibilitychange', onVisChange);
+    window.addEventListener('beforeunload', saveOnExit);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisChange);
+      window.removeEventListener('beforeunload', saveOnExit);
+    };
+  }, []);
+
   const handleSubmitSurvey = async () => {
     console.log(formData);
-    
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMXxRRmtle-94ZA4Ztpdu6192uxbPgT4E-kDyLeSQzgG1nxt2ZV8LaeWICKXHRF5_PcA/exec"; 
-    
-    try {
-      // Use GET with data param — POST redirects fail silently on Google Apps Script
-      const encoded = encodeURIComponent(JSON.stringify(formData));
-      const url = `${GOOGLE_SCRIPT_URL}?data=${encoded}`;
-      
-      // Use an Image beacon — guaranteed to follow redirects without CORS issues
-      const img = new Image();
-      img.src = url;
-      
-      console.log("Submitted to Google Sheets via GET");
-    } catch (error) {
-      console.error("Error submitting form", error);
-    }
-
+    submittedRef.current = true;
+    sendBeacon({ ...formData, _status: 'complete' });
     setSubmitted(true);
   };
 
