@@ -1,21 +1,13 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import './index.css'
 
-// Haptic feedback — light tap (10ms), medium (20ms)
+// Haptic feedback
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
-
-// Fast tap handler — fires on touchEnd to bypass 300ms click delay on mobile
-const fastTap = (handler) => {
-  let touched = false;
-  return {
-    onTouchEnd: (e) => { e.preventDefault(); touched = true; handler(); },
-    onClick: () => { if (!touched) handler(); touched = false; },
-  };
-};
 
 function App() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({});
+  const touchedRef = useRef(false);
 
   const setField = useCallback((name, value) => {
     haptic();
@@ -38,11 +30,40 @@ function App() {
     });
   }, []);
 
+  // Event delegation handler for all bubble/button taps — zero per-element closures
+  const handleBubbleTap = useCallback((e) => {
+    const el = e.target.closest('[data-field]');
+    if (!el) return;
+    const field = el.dataset.field;
+    const value = el.dataset.value;
+    const mode = el.dataset.mode; // 'single' or 'multi'
+    if (mode === 'multi') {
+      toggleMultiSelect(field, value);
+    } else {
+      setField(field, value);
+    }
+  }, [setField, toggleMultiSelect]);
+
+  // Unified touch/click for delegated container
+  const delegatedHandlers = useMemo(() => ({
+    onTouchEnd: (e) => {
+      const el = e.target.closest('[data-field]');
+      if (!el) return;
+      e.preventDefault();
+      touchedRef.current = true;
+      handleBubbleTap(e);
+    },
+    onClick: (e) => {
+      if (touchedRef.current) { touchedRef.current = false; return; }
+      handleBubbleTap(e);
+    }
+  }), [handleBubbleTap]);
+
   const [submitted, setSubmitted] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
 
-  const nextStep = () => { haptic(20); setStep(s => s + 1); };
-  const prevStep = () => { haptic(20); setStep(s => s - 1); };
+  const nextStep = useCallback(() => { haptic(20); setStep(s => s + 1); }, []);
+  const prevStep = useCallback(() => { haptic(20); setStep(s => s - 1); }, []);
 
   // UPI Payment — open UPI app directly
   const UPI_ID = '7348884111@ibl';
@@ -621,12 +642,14 @@ function App() {
     switch (q.type) {
       case 'bubble':
         return (
-          <div className="bubble-container">
+          <div className="bubble-container" {...delegatedHandlers}>
             {q.options.map(opt => (
               <div 
                 key={opt}
                 className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
-                {...fastTap(() => setField(q.id, opt))}
+                data-field={q.id}
+                data-value={opt}
+                data-mode="single"
               >
                 {opt}
               </div>
@@ -637,12 +660,14 @@ function App() {
       case 'bubble-input':
         return (
           <div className="bubble-container-input">
-             <div className="bubble-container">
+             <div className="bubble-container" {...delegatedHandlers}>
               {q.options.map(opt => (
                 <div 
                   key={opt}
                   className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
-                  {...fastTap(() => setField(q.id, opt))}
+                  data-field={q.id}
+                  data-value={opt}
+                  data-mode="single"
                 >
                   {opt}
                 </div>
@@ -659,12 +684,14 @@ function App() {
 
       case 'multi-bubble':
         return (
-          <div className="bubble-container">
+          <div className="bubble-container" {...delegatedHandlers}>
             {q.options.map(opt => (
               <div 
                 key={opt}
                 className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
-                {...fastTap(() => toggleMultiSelect(q.id, opt))}
+                data-field={q.id}
+                data-value={opt}
+                data-mode="multi"
               >
                 {opt}
               </div>
@@ -675,12 +702,14 @@ function App() {
       case 'multi-bubble-input':
         return (
           <div className="bubble-container-input">
-            <div className="bubble-container">
+            <div className="bubble-container" {...delegatedHandlers}>
               {q.options.map(opt => (
                 <div 
                   key={opt}
                   className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
-                  {...fastTap(() => toggleMultiSelect(q.id, opt))}
+                  data-field={q.id}
+                  data-value={opt}
+                  data-mode="multi"
                 >
                   {opt}
                 </div>
@@ -697,10 +726,10 @@ function App() {
 
       case 'counter':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button className="counter-btn" {...fastTap(() => setField(q.id, Math.max(0, (formData[q.id] || 0) - 1)))}>−</button>
-            <span style={{ fontSize: '1.3rem', fontWeight: '600', minWidth: '2rem', textAlign: 'center', color: 'var(--text)' }}>{formData[q.id] || 0}</span>
-            <button className="counter-btn" {...fastTap(() => setField(q.id, (formData[q.id] || 0) + 1))}>+</button>
+          <div className="counter-group">
+            <button className="counter-btn" onClick={() => setField(q.id, Math.max(0, (formData[q.id] || 0) - 1))}>−</button>
+            <span className="counter-value">{formData[q.id] || 0}</span>
+            <button className="counter-btn" onClick={() => setField(q.id, (formData[q.id] || 0) + 1)}>+</button>
           </div>
         );
       
@@ -933,8 +962,7 @@ function App() {
                 color: (formData.email && formData.phone) ? '#fff' : 'var(--text-muted)',
                 fontWeight: '600',
                 fontSize: '0.95rem',
-                cursor: (formData.email && formData.phone) ? 'pointer' : 'not-allowed',
-                transition: 'all var(--transition)'
+                cursor: (formData.email && formData.phone) ? 'pointer' : 'not-allowed'
               }}
                 onClick={() => {
                   if (formData.email && formData.phone) {
@@ -1005,8 +1033,6 @@ function App() {
                           fontSize: '0.85rem',
                           textDecoration: 'none',
                           boxShadow: `0 4px 14px ${app.color}55`,
-                          transition: 'all var(--transition)',
-                          flex: '1',
                           textAlign: 'center',
                           minWidth: '80px'
                         }}
@@ -1131,8 +1157,8 @@ function App() {
           </div>
           
           <div className="navigation-buttons">
-            <button {...fastTap(prevStep)} disabled={step === 0}>← Back</button>
-            <button {...fastTap(handleNext)} className="primary-btn">{isLastStep ? 'Submit ✓' : 'Continue →'}</button>
+            <button onClick={prevStep} disabled={step === 0}>← Back</button>
+            <button onClick={handleNext} className="primary-btn">{isLastStep ? 'Submit ✓' : 'Continue →'}</button>
           </div>
         </div>
       )}
