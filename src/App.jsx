@@ -566,8 +566,30 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const handleSubmitSurvey = () => {
+  const handleSubmitSurvey = async () => {
     console.log(formData);
+    
+    // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL
+    const GOOGLE_SCRIPT_URL = "YOUR_WEB_APP_URL_HERE"; 
+    
+    try {
+      if (GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors", // Important to avoid CORS errors with Google Apps Script
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+        console.log("Submitted to Google Sheets");
+      } else {
+        console.warn("Google Script URL not set. Data not saved to Sheets.");
+      }
+    } catch (error) {
+      console.error("Error submitting form", error);
+    }
+
     downloadCSV();
     setSubmitted(true);
   };
