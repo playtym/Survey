@@ -1,3 +1,7 @@
+function doGet(e) {
+  return ContentService.createTextOutput("Survey Backend is Active. Use POST to submit data.");
+}
+
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.tryLock(10000);
@@ -11,8 +15,10 @@ function doPost(e) {
     try {
        doc = SpreadsheetApp.openById(SPREADSHEET_ID);
     } catch(err) {
-       // Fallback: Create one if ID is invalid (will create a new file every time if not fixed)
-       doc = SpreadsheetApp.create("Survey Responses (Backup)");
+       // Return error if sheet cannot be opened (avoids needing Drive scope for .create)
+       return ContentService
+         .createTextOutput(JSON.stringify({ "result": "error", "error": "Invalid Spreadsheet ID or Permission Denied. Please check SPREADSHEET_ID in Code.js" }))
+         .setMimeType(ContentService.MimeType.JSON);
     }
 
     var sheet = doc.getSheets()[0];
@@ -20,13 +26,31 @@ function doPost(e) {
     // Parse data - handle different content types if necessary
     var data = JSON.parse(e.postData.contents);
     
-    // Get headers from the first row to ensure column consistency
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    
-    // If sheet is empty, create headers from the first response
-    if (headers.length === 0 || (headers.length === 1 && headers[0] === "")) {
-      headers = ["Timestamp"].concat(Object.keys(data));
+    // Get existing headers or initialize empty array
+    var lastCol = sheet.getLastColumn();
+    var headers = [];
+
+    if (lastCol > 0) {
+      headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    }
+
+    // Initialize headers if sheet is empty
+    if (headers.length === 0) {
+      // Create headers from the keys of the incoming data object
+      // Always include 'Timestamp' as the first column
+      var keys = Object.keys(data);
+      headers = ["Timestamp"].concat(keys);
       sheet.appendRow(headers);
+    } else {
+        // Basic schema evolution: Check if new fields exist in data but not headers
+        var newKeys = Object.keys(data).filter(k => headers.indexOf(k) === -1);
+        if (newKeys.length > 0) {
+             // Append new headers to the first row
+             var lastCol = headers.length; 
+             sheet.getRange(1, lastCol + 1, 1, newKeys.length).setValues([newKeys]);
+             // Update our local headers array
+             headers = headers.concat(newKeys);
+        }
     }
     
     // Map data to headers
