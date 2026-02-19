@@ -877,28 +877,74 @@ function App() {
             )}
             {/* Free Waitlist */}
             <div style={{ 
-              padding: '20px', 
+              padding: '24px 20px', 
               background: 'var(--surface)', 
               border: '1px solid var(--glass-border)', 
               borderRadius: 'var(--radius)',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>Join the Waitlist</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>Be the first to know when we launch. Completely free.</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Be the first to know when we launch. Completely free.</div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                <input 
+                  type="email"
+                  name="waitlistEmail"
+                  placeholder="Your Email"
+                  value={formData.email || ''}
+                  onChange={(e) => setField('email', e.target.value)}
+                   style={{
+                      width: '100%',
+                      maxWidth: '320px',
+                      padding: '12px',
+                      background: 'var(--bg)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text)',
+                      fontSize: '0.95rem'
+                   }}
+                />
+                 <input 
+                  type="tel"
+                  name="waitlistPhone"
+                  placeholder="Your Phone Number"
+                  value={formData.phone || ''}
+                  onChange={(e) => {
+                     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                     setField('phone', val);
+                  }}
+                   style={{
+                      width: '100%',
+                      maxWidth: '320px',
+                      padding: '12px',
+                      background: 'var(--bg)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text)',
+                      fontSize: '0.95rem'
+                   }}
+                />
+              </div>
+
               <div style={{ 
-                padding: '10px 20px', 
-                background: formData.waitlistJoined ? 'var(--success-bg)' : 'var(--surface-hover)',
-                border: `1px solid ${formData.waitlistJoined ? 'var(--success-border)' : 'var(--glass-border)'}`,
+                marginTop: '16px',
+                padding: '12px 24px', 
+                background: (formData.email && formData.phone) ? 'var(--accent)' : 'var(--surface-hover)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: 'var(--radius-sm)',
-                color: formData.waitlistJoined ? 'var(--success)' : 'var(--text-secondary)',
-                fontWeight: '550',
-                fontSize: '0.9rem',
-                cursor: 'pointer',
+                color: (formData.email && formData.phone) ? '#fff' : 'var(--text-muted)',
+                fontWeight: '600',
+                fontSize: '0.95rem',
+                cursor: (formData.email && formData.phone) ? 'pointer' : 'not-allowed',
                 transition: 'all var(--transition)'
               }}
-                onClick={() => setField('waitlistJoined', true)}
+                onClick={() => {
+                  if (formData.email && formData.phone) {
+                    setField('waitlistJoined', true);
+                  }
+                }}
               >
-                {formData.waitlistJoined ? '✓ You\'re on the waitlist!' : 'Join Free Waitlist'}
+                {formData.waitlistJoined ? '✓ You\'re on the waitlist!' : 'Join Waitlist'}
               </div>
             </div>
 
