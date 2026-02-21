@@ -159,11 +159,12 @@ function App() {
           console.log('Skipping unknown field:', col, '(from key:', key + ')');
           continue;
         }
-        // Arrays → comma-separated string; numbers stay as numbers; booleans → string
+        // Arrays → comma-separated string; numbers → number only for Airtable number columns, else string; booleans → string
+        const AIRTABLE_NUMBER_COLS = new Set(['step', 'kids', 'ccCount', 'noOfSIPs']);
         if (Array.isArray(val)) {
           fields[col] = val.join(', ');
         } else if (typeof val === 'number') {
-          fields[col] = val;
+          fields[col] = AIRTABLE_NUMBER_COLS.has(col) ? val : String(val);
         } else if (typeof val === 'boolean') {
           fields[col] = val ? 'Yes' : 'No';
         } else {
@@ -204,12 +205,13 @@ function App() {
           const errorBody = await response.json().catch(() => ({}));
           console.error(`Airtable ${method} failed:`, response.status, JSON.stringify(errorBody));
 
-          // On 422 UNKNOWN_FIELD_NAME: strip the offending field and retry
+          // On 422 UNKNOWN_FIELD_NAME or INVALID_VALUE_FOR_COLUMN: strip the offending field and retry
           if (response.status === 422 && errorBody?.error?.message) {
-            const match = errorBody.error.message.match(/Unknown field name: "([^"]+)"/);
-            if (match) {
-              const badField = match[1];
-              console.warn(`Stripping unknown field "${badField}" and retrying...`);
+            const unknownMatch = errorBody.error.message.match(/Unknown field name: "([^"]+)"/);
+            const invalidMatch = errorBody.error.message.match(/Field "([^"]+)"/);
+            const badField = unknownMatch?.[1] || invalidMatch?.[1];
+            if (badField) {
+              console.warn(`Stripping problematic field "${badField}" and retrying... (${errorBody.error.type || 'unknown'})`);
               delete currentFields[badField];
               continue; // retry
             }
