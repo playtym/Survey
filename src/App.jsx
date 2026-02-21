@@ -185,6 +185,13 @@ function App() {
         step: typeof _step === 'number' ? _step : 0,
         timestamp: new Date().toISOString(),
       };
+      const NUMBER_COLUMNS = new Set([
+        'step', 'kids', 'ccCount', 'noOfSIPs',
+        'portfolioSplit_FD', 'portfolioSplit_MF', 'portfolioSplit_Stocks',
+        'portfolioSplit_PMS', 'portfolioSplit_RE', 'portfolioSplit_Crypto',
+        'portfolioSplit_Gold', 'portfolioSplit_Other'
+      ]);
+
       // Map each survey response to its Airtable column
       for (const [key, val] of Object.entries(surveyData)) {
         if (val === undefined || val === null || val === '') continue;
@@ -194,14 +201,14 @@ function App() {
           console.log('Skipping unknown field:', col, '(from key:', key + ')');
           continue;
         }
-        // Skip zero-value portfolio splits and counters — 0 means "not set / no allocation"
-        if (typeof val === 'number' && val === 0) continue;
 
-        if (Array.isArray(val)) {
+        if (NUMBER_COLUMNS.has(col)) {
+          const numVal = Number(val);
+          // Skip zero-value portfolio splits and counters — 0 means "not set / no allocation"
+          if (numVal === 0) continue;
+          fields[col] = numVal;
+        } else if (Array.isArray(val)) {
           fields[col] = val.join(', ');
-        } else if (typeof val === 'number') {
-          // Send numbers as strings — safe for both text and number Airtable columns
-          fields[col] = String(val);
         } else if (typeof val === 'boolean') {
           fields[col] = val ? 'Yes' : 'No';
         } else {
@@ -1012,9 +1019,9 @@ function App() {
       case 'counter':
         return (
           <div className="counter-group">
-            <button className="counter-btn" onClick={() => setField(q.id, Math.max(0, (formData[q.id] || 0) - 1))}>−</button>
+            <button className="counter-btn" onClick={() => setField(q.id, Math.max(0, (parseInt(formData[q.id], 10) || 0) - 1))}>−</button>
             <span className="counter-value">{formData[q.id] || 0}</span>
-            <button className="counter-btn" onClick={() => setField(q.id, (formData[q.id] || 0) + 1)}>+</button>
+            <button className="counter-btn" onClick={() => setField(q.id, (parseInt(formData[q.id], 10) || 0) + 1)}>+</button>
           </div>
         );
 
