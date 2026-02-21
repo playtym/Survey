@@ -20,6 +20,10 @@ const getSessionId = () => {
 };
 const SESSION_ID = getSessionId();
 
+// Persist Airtable record ID so upserts update the same row (survives refresh)
+const getRecordId = () => { try { return localStorage.getItem('survey_recordId') || null; } catch { return null; } };
+const setRecordId = (id) => { try { localStorage.setItem('survey_recordId', id); } catch {} };
+
 // Airtable config — split to bypass GitHub push protection scanner
 const _a = 'patTIXVnijoe';
 const _b = 'UcGwa.d6c35c42fa23ec0b18006299fd0f204cf195bb457e4193c8e5299a618bda1fef';
@@ -72,27 +76,28 @@ function App() {
   const AIRTABLE_COLUMNS = new Set([
     'sessionId', 'resp_status', 'step', 'timestamp',
     // About You
-    'name_resp', 'age', 'place', 'profession', 'salary', 'married', 'dependents',
+    'name_resp', 'age', 'place', 'place_other', 'profession', 'profession_other', 'salary', 'married', 'dependents',
     // Family
-    'workingSpouse', 'householdIncome', 'kids', 'jointAccount', 'whyNoJoint', 'financialDecisionMaker',
+    'workingSpouse', 'householdIncome', 'kids', 'jointAccount', 'whyNoJoint', 'whyNoJoint_other', 'financialDecisionMaker',
     // Money & Goals
     'moneyPersonality', 'financialLiteracy', 'financialGoals', 'financialGoals_other',
-    'emergencyFund', 'whyNoEmergencyFund', 'salarySplitInvest', 'salarySplitEMI',
-    'highEMIReason', 'highEMIReason_other', 'whyLowInvest', 'investmentStyle',
+    'emergencyFund', 'whyNoEmergencyFund', 'whyNoEmergencyFund_other', 'salarySplitInvest', 'salarySplitEMI',
+    'highEMIReason', 'highEMIReason_other', 'whyLowInvest', 'whyLowInvest_other', 'investmentStyle',
     'biggestMoneyMistake', 'biggestMoneyMistake_other',
     // Banking
     'bankAc', 'bankAc_other', 'bankMultiReason', 'bankMultiReason_other',
-    'cashInSavings', 'cashReason', 'paymentModes', 'autoPay',
-    'autoPayReason', 'autoPayPartialReason', 'highIncomeNoAutoPay',
+    'cashInSavings', 'cashReason', 'cashReason_other', 'paymentModes', 'autoPay',
+    'autoPayReason', 'autoPayReason_other', 'autoPayPartialReason', 'autoPayPartialReason_other',
+    'highIncomeNoAutoPay', 'highIncomeNoAutoPay_other',
     // Credit Cards
-    'ccCount', 'ccNames', 'ccNames_other', 'ccBillPay', 'whyRevolve',
+    'ccCount', 'ccNames', 'ccNames_other', 'ccBillPay', 'whyRevolve', 'whyRevolve_other',
     'ccOptimisation', 'ccResearch', 'ccResearch_other',
     // Loans
-    'activeLoans', 'homeLoanOutstanding', 'homeLoanRate', 'whyUnsureLoanRate',
-    'homeLoanReview', 'personalLoanReason', 'personalLoanRate',
-    'debtFreeReason', 'emiTracking', 'emiPrepayment',
+    'activeLoans', 'homeLoanOutstanding', 'homeLoanRate', 'whyUnsureLoanRate', 'whyUnsureLoanRate_other',
+    'homeLoanReview', 'personalLoanReason', 'personalLoanReason_other', 'personalLoanRate',
+    'debtFreeReason', 'debtFreeReason_other', 'emiTracking', 'emiTracking_other', 'emiPrepayment',
     // Portfolio
-    'investments', 'portfolioDecision', 'portfolioReviewFreq', 'whyNeverReview',
+    'investments', 'portfolioDecision', 'portfolioDecision_other', 'portfolioReviewFreq', 'whyNeverReview', 'whyNeverReview_other',
     'portfolioSplit_FD', 'portfolioSplit_MF', 'portfolioSplit_Stocks', 'portfolioSplit_PMS',
     'portfolioSplit_RE', 'portfolioSplit_Crypto', 'portfolioSplit_Gold',
     'portfolioSplit_Other', 'portfolioSplit_Other_Text',
@@ -100,32 +105,32 @@ function App() {
     'fdWhere', 'fdWhere_other', 'fdInterest', 'reasonForFD', 'reasonForFD_other', 'fdReview', 'whyHeavyFD',
     // MF
     'mfPlatform', 'mfPlatform_other', 'mfMultiReason', 'mfMultiReason_other',
-    'mfType', 'mfType_other', 'sip_percent', 'whyNoSIP', 'noOfSIPs',
-    'mfDecision', 'mfDecision_other', 'regularVsDirect', 'trackXIRR', 'mfRebalancing', 'whyNoRebalance',
+    'mfType', 'mfType_other', 'sip_percent', 'whyNoSIP', 'whyNoSIP_other', 'noOfSIPs',
+    'mfDecision', 'mfDecision_other', 'regularVsDirect', 'trackXIRR', 'mfRebalancing', 'whyNoRebalance', 'whyNoRebalance_other',
     // Stocks
     'stocksPlatform', 'stocksPlatform_other', 'stockMultiReason', 'stockMultiReason_other',
     'stockFreq', 'stockDecision', 'stockDecision_other', 'tipsDamage',
-    'stockHowMuch', 'stockTrack', 'watchlist',
+    'stockHowMuch', 'stockHowMuch_other', 'stockTrack', 'stockTrack_other', 'watchlist',
     // PMS
-    'pmsType', 'pmsDecision', 'pmsReturn', 'pmsFees', 'pmsSatisfaction', 'whyStillPMS', 'reasonNoPMS',
+    'pmsType', 'pmsDecision', 'pmsDecision_other', 'pmsReturn', 'pmsFees', 'pmsSatisfaction', 'whyStillPMS', 'whyStillPMS_other', 'reasonNoPMS', 'reasonNoPMS_other',
     // Real Estate
-    'reType', 'reDecision', 'reReview',
+    'reType', 'reDecision', 'reDecision_other', 'reReview',
     // Crypto
     'cryptoPlatform', 'cryptoPlatform_other', 'cryptoType', 'cryptoType_other',
-    'cryptoDecision', 'cryptoTaxAware', 'cryptoReview',
+    'cryptoDecision', 'cryptoDecision_other', 'cryptoTaxAware', 'cryptoReview',
     // Gold
-    'goldType', 'goldDecision', 'goldReview',
+    'goldType', 'goldDecision', 'goldDecision_other', 'goldReview',
     // Insurance
-    'insuranceTypes', 'whyNoInsurance', 'whyNoHealth',
+    'insuranceTypes', 'whyNoInsurance', 'whyNoInsurance_other', 'whyNoHealth', 'whyNoHealth_other',
     'insuranceDiscovery', 'insuranceDiscovery_other', 'insuranceAdequacy',
-    'whyUnderInsured', 'whyUnsureInsurance',
+    'whyUnderInsured', 'whyUnderInsured_other', 'whyUnsureInsurance', 'whyUnsureInsurance_other',
     // Taxes
-    'taxRegime', 'whyUnsureRegime', 'taxFiling', 'taxFilingFee',
-    'caProactive', 'whyKeepCA', 'taxOptimization', 'taxHarvesting', 'taxSatisfaction',
+    'taxRegime', 'whyUnsureRegime', 'whyUnsureRegime_other', 'taxFiling', 'taxFiling_other', 'taxFilingFee', 'taxFilingFee_other',
+    'caProactive', 'whyKeepCA', 'whyKeepCA_other', 'taxOptimization', 'taxHarvesting', 'taxSatisfaction',
     // Tax Automation
-    'aggregatorOpenness', 'emailShare', 'whyNoDataShare', 'willingToPayTax',
+    'aggregatorOpenness', 'emailShare', 'whyNoDataShare', 'whyNoDataShare_other', 'willingToPayTax',
     // Product Concept
-    'painPoints', 'painPoints_other', 'singleView', 'whyNoDashboard',
+    'painPoints', 'painPoints_other', 'singleView', 'whyNoDashboard', 'whyNoDashboard_other',
     'oneButtonPay', 'autoInvest', 'autoRebalance', 'aiAdvisor',
     // Tool Expectations
     'criticalFeatures', 'criticalFeatures_other', 'dataPrivacy', 'interactionPreference', 'advisoryStyle',
@@ -142,7 +147,7 @@ function App() {
       const fields = {
         sessionId: SESSION_ID,
         resp_status: _status || 'unknown',
-        step: _step || 0,
+        step: typeof _step === 'number' ? _step : 0,
         timestamp: new Date().toISOString(),
       };
       // Map each survey response to its Airtable column
@@ -166,8 +171,37 @@ function App() {
         }
       }
       
-      console.log("Submitting fields to Airtable:", Object.keys(fields));
+      const existingRecordId = getRecordId();
       
+      // If we already have a record ID, PATCH (update) instead of POST (create)
+      if (existingRecordId) {
+        console.log(`Updating existing record ${existingRecordId} (${_status}), step=${_step}, fields:`, Object.keys(fields).length);
+        const response = await fetch(AIRTABLE_URL, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ records: [{ id: existingRecordId, fields }] })
+        });
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          console.error('Airtable PATCH failed:', response.status, errorBody);
+          // If record was deleted from Airtable, clear ID and fall through to create
+          if (response.status === 404 || response.status === 422) {
+            console.warn('Record not found, will create a new one.');
+            setRecordId(null);
+            // Fall through to POST below
+          } else {
+            throw new Error(`Airtable error ${response.status}`);
+          }
+        } else {
+          return true;
+        }
+      }
+      
+      // POST — create new record
+      console.log(`Creating new record (${_status}), step=${_step}, fields:`, Object.keys(fields).length);
       const response = await fetch(AIRTABLE_URL, {
         method: 'POST',
         headers: {
@@ -179,17 +213,23 @@ function App() {
       
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        console.error("Airtable rejected submission:", response.status, errorBody);
-        // If specific fields are unknown, try again without them
+        console.error('Airtable POST failed:', response.status, errorBody);
         if (errorBody?.error?.type === 'UNKNOWN_FIELD_NAME' || response.status === 422) {
-          console.error("Unknown field(s) detected. Full fields sent:", fields);
+          console.error('Unknown field(s) detected. Full fields sent:', fields);
         }
         throw new Error(`Airtable error ${response.status}`);
       }
       
+      // Save the record ID for future upserts
+      const result = await response.json();
+      if (result?.records?.[0]?.id) {
+        setRecordId(result.records[0].id);
+        console.log('Saved Airtable record ID:', result.records[0].id);
+      }
+      
       return true;
     } catch (e) { 
-      console.error("Submission failed", e);
+      console.error('Submission failed', e);
       return false;
     }
   };
@@ -781,16 +821,34 @@ function App() {
   const currentSection = sections[step];
   const isLastStep = step === sections.length - 1;
 
+  // Auto-save partial progress to Airtable on every step change (debounced)
+  const autoSaveTimerRef = useRef(null);
+  useEffect(() => {
+    // Don't auto-save on step 0 (user hasn't answered anything yet) or after final submit
+    if (step === 0 || submittedRef.current) return;
+    
+    // Debounce: wait 1.5s after last step change before saving
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      console.log(`[Auto-save] Saving partial data at step ${step}...`);
+      submitToAirtable({ ...formDataRef.current, _status: 'partial', _step: step });
+    }, 1500);
+
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmitSurvey = async () => {
     setIsSubmitting(true);
-    // Only save when user explicitly submits
-    const success = await submitToAirtable({ ...formData, _status: 'complete' });
+    // Cancel any pending auto-save so we don't race
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    const success = await submitToAirtable({ ...formData, _status: 'complete', _step: step });
     if (success) {
       submittedRef.current = true;
       setSubmitted(true);
-      // Optional: clear local storage if you want to prevent re-submission or allow fresh start
+      // Clear local storage including record ID
       localStorage.removeItem('survey_step');
       localStorage.removeItem('survey_formData');
+      localStorage.removeItem('survey_recordId');
     } else {
       alert("Submission failed. Please try again.");
       setIsSubmitting(false);
