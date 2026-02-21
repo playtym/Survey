@@ -62,6 +62,10 @@ function App() {
   }, [step, formData]);
 
   // One-time save to Airtable on final submit
+  // Internal keys that should NOT be sent to Airtable
+  // 'investments' is an internal array used for conditional rendering (the actual % splits are separate fields)
+  const SKIP_FIELDS = new Set(['investments', 'waitlistJoined']);
+
   const submitToAirtable = async (data) => {
     try {
       const { _status, _step, ...surveyData } = data;
@@ -75,16 +79,21 @@ function App() {
       // Map each survey response to its Airtable column
       for (const [key, val] of Object.entries(surveyData)) {
         if (val === undefined || val === null || val === '') continue;
+        if (SKIP_FIELDS.has(key)) continue; // Skip internal-only fields
         const col = FIELD_MAP[key] || key;
         // Arrays → comma-separated string; numbers stay as numbers; booleans → string
         if (Array.isArray(val)) {
           fields[col] = val.join(', ');
         } else if (typeof val === 'number') {
           fields[col] = val;
+        } else if (typeof val === 'boolean') {
+          fields[col] = val ? 'Yes' : 'No';
         } else {
           fields[col] = String(val);
         }
       }
+      
+      console.log("Submitting fields to Airtable:", Object.keys(fields));
       
       const response = await fetch(AIRTABLE_URL, {
         method: 'POST',
@@ -96,6 +105,12 @@ function App() {
       });
       
       if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        console.error("Airtable rejected submission:", response.status, errorBody);
+        // If specific fields are unknown, try again without them
+        if (errorBody?.error?.type === 'UNKNOWN_FIELD_NAME' || response.status === 422) {
+          console.error("Unknown field(s) detected. Full fields sent:", fields);
+        }
         throw new Error(`Airtable error ${response.status}`);
       }
       
