@@ -170,64 +170,71 @@ function App() {
           fields[col] = String(val);
         }
       }
-      
-      const existingRecordId = getRecordId();
-      
-      // If we already have a record ID, PATCH (update) instead of POST (create)
-      if (existingRecordId) {
-        console.log(`Updating existing record ${existingRecordId} (${_status}), step=${_step}, fields:`, Object.keys(fields).length);
-        const response = await fetch(AIRTABLE_URL, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ records: [{ id: existingRecordId, fields }] })
-        });
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
-          console.error('Airtable PATCH failed:', response.status, errorBody);
-          // If record was deleted from Airtable, clear ID and fall through to create
-          if (response.status === 404 || response.status === 422) {
-            console.warn('Record not found, will create a new one.');
-            setRecordId(null);
-            // Fall through to POST below
-          } else {
-            throw new Error(`Airtable error ${response.status}`);
+
+      // Helper: send to Airtable with automatic retry on UNKNOWN_FIELD_NAME
+      const sendWithRetry = async (fieldsToSend, maxRetries = 3) => {
+        let currentFields = { ...fieldsToSend };
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          const existingRecordId = getRecordId();
+          const method = existingRecordId ? 'PATCH' : 'POST';
+          const body = existingRecordId
+            ? { records: [{ id: existingRecordId, fields: currentFields }] }
+            : { records: [{ fields: currentFields }] };
+
+          console.log(`[Attempt ${attempt + 1}] ${method} (${_status}), step=${_step}, fields:`, Object.keys(currentFields).length);
+
+          const response = await fetch(AIRTABLE_URL, {
+            method,
+            headers: {
+              'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result?.records?.[0]?.id) {
+              setRecordId(result.records[0].id);
+              console.log('Saved Airtable record ID:', result.records[0].id);
+            }
+            return true;
           }
-        } else {
-          return true;
+
+          const errorBody = await response.json().catch(() => ({}));
+          console.error(`Airtable ${method} failed:`, response.status, errorBody);
+
+          // On 422 UNKNOWN_FIELD_NAME: strip the offending field and retry
+          if (response.status === 422 && errorBody?.error?.message) {
+            const match = errorBody.error.message.match(/Unknown field name: "([^"]+)"/);
+            if (match) {
+              const badField = match[1];
+              console.warn(`Stripping unknown field "${badField}" and retrying...`);
+              delete currentFields[badField];
+              continue; // retry
+            }
+          }
+
+          // On 422 PATCH where record might be missing, clear recordId and retry as POST
+          if (response.status === 422 && method === 'PATCH') {
+            console.warn('PATCH 422 — clearing record ID, will retry as POST');
+            setRecordId(null);
+            continue;
+          }
+
+          // On 404 PATCH (record deleted), clear recordId and retry as POST
+          if (response.status === 404 && method === 'PATCH') {
+            console.warn('Record not found, clearing ID and retrying as POST');
+            setRecordId(null);
+            continue;
+          }
+
+          throw new Error(`Airtable error ${response.status}`);
         }
-      }
-      
-      // POST — create new record
-      console.log(`Creating new record (${_status}), step=${_step}, fields:`, Object.keys(fields).length);
-      const response = await fetch(AIRTABLE_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ records: [{ fields }] })
-      });
-      
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error('Airtable POST failed:', response.status, errorBody);
-        if (errorBody?.error?.type === 'UNKNOWN_FIELD_NAME' || response.status === 422) {
-          console.error('Unknown field(s) detected. Full fields sent:', fields);
-        }
-        throw new Error(`Airtable error ${response.status}`);
-      }
-      
-      // Save the record ID for future upserts
-      const result = await response.json();
-      if (result?.records?.[0]?.id) {
-        setRecordId(result.records[0].id);
-        console.log('Saved Airtable record ID:', result.records[0].id);
-      }
-      
-      return true;
+        throw new Error('Max retries exceeded');
+      };
+
+      return await sendWithRetry(fields);
     } catch (e) { 
       console.error('Submission failed', e);
       return false;
