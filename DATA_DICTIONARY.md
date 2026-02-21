@@ -16,20 +16,20 @@ This document outlines all the data fields collected by the survey application a
 | Field ID | Airtable Column | Type | Options / Description |
 | :--- | :--- | :--- | :--- |
 | `name` | `name_resp` | Text | Full name of the respondent |
-| `age` | Single Select | 18-24, 25-34, 35-44, 45-54, 55+ |
-| `place` | Single Select + Text | City (Bangalore, Mumbai, etc.) or custom input |
-| `place_other` | Text | Custom city input |
-| `profession` | Single Select + Text | Salaried, Founder, Business Owner, etc. |
-| `profession_other` | Text | Custom profession input |
-| `salary` | Single Select | < 10 LPA, 10-30 LPA, ... > 2 Cr |
-| `married` | Single Select | Single, Married |
-| `dependents` | Multi Select | Parents, Siblings, No one (If Single) |
+| `age` | | Single Select | 18-24, 25-34, 35-44, 45-54, 55+ |
+| `place` | | Single Select + Text | City (Bangalore, Mumbai, etc.) or custom input |
+| `place_other` | | Text | Custom city input |
+| `profession` | | Single Select + Text | Salaried, Founder, Business Owner, etc. |
+| `profession_other` | | Text | Custom profession input |
+| `salary` | | Single Select | &lt; 10 LPA, 10-30 LPA, ... &gt; 2 Cr |
+| `married` | | Single Select | Single, Married |
+| `dependents` | | Multi Select | Parents, Siblings, No one (If Single) |
 
 ### 2. Family & Household (If Married)
 | Field ID | Type | Options / Description |
 | :--- | :--- | :--- |
 | `workingSpouse` | Single Select | Yes, No |
-| `householdIncome` | Single Select | < 20 LPA ... > 5 Cr (If spouse works) |
+| `householdIncome` | Single Select | &lt; 20 LPA ... &gt; 5 Cr (If spouse works) |
 | `kids` | Number | Count of children |
 | `dependents` | Multi Select | Parents, In-laws, Siblings, No one else |
 | `jointAccount` | Multi Select | Yes - with Spouse, Yes - with Parents, No |
@@ -64,7 +64,7 @@ This document outlines all the data fields collected by the survey application a
 | `bankAc_other` | Text | Custom bank name |
 | `bankMultiReason` | Multi Select + Text | Reason for multiple accounts |
 | `bankMultiReason_other` | Text | Custom reason |
-| `cashInSavings` | Single Select | Amount scale (< 1L to > 25L) |
+| `cashInSavings` | Single Select | Amount scale (&lt; 1L to &gt; 25L) |
 | `cashReason` | Text | Reason for high cash balance |
 | `cashReason_other` | Text | Custom reason for high cash balance |
 | `paymentModes` | Multi Select | UPI, CC, DC, Netbanking, Cash |

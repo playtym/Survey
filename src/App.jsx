@@ -4,6 +4,38 @@ import './index.css'
 // Haptic feedback
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch (e) { } };
 
+const DebouncedInput = ({ value, onChange, delay = 300, isTextarea = false, ...props }) => {
+  const [localValue, setLocalValue] = useState(value || '');
+
+  useEffect(() => {
+    setLocalValue(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localValue !== (value || '')) {
+        onChange(localValue);
+      }
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [localValue, value, onChange, delay]);
+
+  const handleChange = (e) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = () => {
+    if (localValue !== (value || '')) {
+      onChange(localValue);
+    }
+  };
+
+  if (isTextarea) {
+    return <textarea {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
+  }
+  return <input {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
+};
+
 // Generate a unique session ID so partial + complete rows can be correlated
 // Persist session ID to localStorage so refreshing maintains the same session
 const getSessionId = () => {
@@ -63,12 +95,15 @@ function App() {
   const submittedRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Persist state to localStorage whenever it changes
+  // Persist state to localStorage whenever it changes (debounced to avoid blocking main thread)
   useEffect(() => {
-    try {
-      localStorage.setItem('survey_step', step);
-      localStorage.setItem('survey_formData', JSON.stringify(formData));
-    } catch (e) { /* ignore localStorage errors */ }
+    const handler = setTimeout(() => {
+      try {
+        localStorage.setItem('survey_step', step);
+        localStorage.setItem('survey_formData', JSON.stringify(formData));
+      } catch (e) { /* ignore localStorage errors */ }
+    }, 300);
+    return () => clearTimeout(handler);
   }, [step, formData]);
 
   // One-time save to Airtable on final submit
@@ -244,11 +279,6 @@ function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
-  const handleTextChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }, []);
-
   const toggleMultiSelect = useCallback((name, value) => {
     haptic();
     setFormData(prev => {
@@ -405,7 +435,7 @@ function App() {
       id: 'banking',
       title: 'Banking & Payments',
       questions: [
-        { id: 'bankAc', label: 'Bank Account(s)', type: 'multi-bubble-input', options: commonBanks },
+        { id: 'bankAc', label: 'Bank Account(s)', type: 'multi-bubble-input', options: commonBanks, placeholder: 'Other Banks...' },
         ...(formData.bankAc && formData.bankAc.length > 1 ? [{ id: 'bankMultiReason', label: 'Why multiple bank accounts?', type: 'multi-bubble-input', options: ['Salary Account', 'Better Rates / Offers', 'Safety / Diversification', 'Old accounts still open'] }] : []),
         { id: 'cashInSavings', label: 'Cash sitting in Savings (Lakhs)', type: 'bubble', options: ['< 1L', '1-5L', '5-10L', '10-25L', '> 25L'] },
 
@@ -542,7 +572,7 @@ function App() {
       id: 'mfDetails',
       title: 'Mutual Funds',
       questions: [
-        { id: 'mfPlatform', label: 'Platform(s) used', type: 'multi-bubble-input', options: platforms },
+        { id: 'mfPlatform', label: 'Platform(s) used', type: 'multi-bubble-input', options: platforms, placeholder: 'Other Platforms...' },
         ...(formData.mfPlatform && formData.mfPlatform.length > 1 ? [{ id: 'mfMultiReason', label: 'Why multiple platforms?', type: 'multi-bubble-input', options: ['Better UI/Features', 'Diversification/Safety', 'Migrated to new one', 'Different goals per platform'] }] : []),
         { id: 'mfType', label: 'Types of MF you invest in', type: 'multi-bubble-input', options: ['Large Cap', 'Mid/Small Cap', 'Index Funds', 'Debt Funds', 'ELSS (Tax Saving)', 'Sectoral/Thematic', 'Not sure of categories'] },
         { id: 'sip_percent', label: 'SIP as % of monthly income', type: 'bubble', options: ['< 10%', '10-20%', '20-30%', '> 30%', 'No SIP - Lumpsum only'] },
@@ -577,7 +607,7 @@ function App() {
       id: 'stockDetails',
       title: 'Stocks',
       questions: [
-        { id: 'stocksPlatform', label: 'Trading platform(s)', type: 'multi-bubble-input', options: platforms },
+        { id: 'stocksPlatform', label: 'Trading platform(s)', type: 'multi-bubble-input', options: platforms, placeholder: 'Other Platforms...' },
         ...(formData.stocksPlatform && formData.stocksPlatform.length > 1 ? [{ id: 'stockMultiReason', label: 'Why multiple brokers?', type: 'multi-bubble-input', options: ['Long-term vs Trading', 'Better Charges', 'Safety / Resilience', 'Specific Features (Charts)', 'Migrated to new app'] }] : []),
         { id: 'stockFreq', label: 'Trading frequency', type: 'bubble', options: ['Daily', 'Weekly', 'Monthly', 'Long Term Holder'] },
         { id: 'stockDecision', label: 'How do you pick stocks?', type: 'multi-bubble-input', options: ['Fundamental Analysis', 'Technical Charts', 'Tips (Friends/Telegram)', 'Screeners (Trendlyne/Ticker)', 'Follow Big Investors', 'News/Events driven', 'Self Research'] },
@@ -627,7 +657,7 @@ function App() {
       id: 'cryptoDetails',
       title: 'Crypto',
       questions: [
-        { id: 'cryptoPlatform', label: 'Platform(s)', type: 'multi-bubble-input', options: ['WazirX', 'CoinDCX', 'Binance', 'CoinSwitch', 'Zebpay'] },
+        { id: 'cryptoPlatform', label: 'Platform(s)', type: 'multi-bubble-input', options: ['WazirX', 'CoinDCX', 'Binance', 'CoinSwitch', 'Zebpay'], placeholder: 'Other Platforms...' },
         { id: 'cryptoType', label: 'What do you hold?', type: 'multi-bubble-input', options: ['Bitcoin', 'Ethereum', 'Altcoins', 'Stablecoins', 'NFTs'] },
         { id: 'cryptoDecision', label: 'How do you decide what to buy?', type: 'bubble-input', options: ['FOMO / Hype', 'Technical Analysis', 'Long-term belief', 'Small speculative bets', 'Community / Twitter driven'] },
         { id: 'cryptoTaxAware', label: 'Are you aware of 30% crypto tax + 1% TDS in India?', type: 'bubble', options: ['Yes - factor it in', 'Yes - but don\'t care', 'Vaguely aware', 'No idea'] },
@@ -742,7 +772,7 @@ function App() {
           { id: 'whyNoDataShare', label: 'What would make you comfortable sharing data?', type: 'bubble-input', options: ['Govt-backed platform', 'Data deleted after filing', 'Trusted brand (Google/Apple level)', 'Nothing - will never share', 'On-device processing only'] }
         ] : []),
 
-        { id: 'willingToPayTax', label: 'How much would you pay for automated tax filing?', type: 'bubble', options: ['Free only', '< 500 INR', '500-1500 INR', '> 1500 INR'] }
+        { id: 'willingToPayTax', label: 'How much would you pay for automated tax filing + tax optimisation?', type: 'bubble', options: ['Free only', '< 500 INR', '500-1500 INR', '> 1500 INR'] }
       ]
     },
 
@@ -928,11 +958,11 @@ function App() {
                 </div>
               ))}
             </div>
-            <input
+            <DebouncedInput
               type="text"
               placeholder="Other / Type here..."
               value={formData[q.id] || ''}
-              onChange={(e) => setField(q.id, e.target.value)}
+              onChange={(val) => setField(q.id, val)}
             />
           </div>
         );
@@ -970,11 +1000,11 @@ function App() {
                 </div>
               ))}
             </div>
-            <input
+            <DebouncedInput
               type="text"
-              placeholder="Other Reasons..."
+              placeholder={q.placeholder || "Other Reasons..."}
               value={formData[`${q.id}_other`] || ''}
-              onChange={(e) => setField(`${q.id}_other`, e.target.value)}
+              onChange={(val) => setField(`${q.id}_other`, val)}
             />
           </div>
         );
@@ -991,14 +1021,15 @@ function App() {
       case 'range':
         return (
           <div style={{ width: '100%' }}>
-            <input
+            <DebouncedInput
               type="range"
               min={q.min}
               max={q.max}
               step={q.step}
               value={formData[q.id] || q.min}
-              onChange={handleTextChange}
+              onChange={(val) => setField(q.id, val)}
               name={q.id}
+              delay={50}
             />
             <div style={{ textAlign: 'center', fontWeight: '600', fontSize: '1.1rem', color: 'var(--accent-text)', marginTop: '4px' }}>{formData[q.id] || q.min} / {q.max}</div>
           </div>
@@ -1006,10 +1037,11 @@ function App() {
 
       case 'textarea':
         return (
-          <textarea
+          <DebouncedInput
+            isTextarea
             name={q.id}
             value={formData[q.id] || ''}
-            onChange={handleTextChange}
+            onChange={(val) => setField(q.id, val)}
             rows={3}
             placeholder="Type here..."
           />
@@ -1055,13 +1087,14 @@ function App() {
                     <label style={{ fontWeight: '500', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{opt}</label>
                     <span style={{ fontWeight: '600', fontSize: '0.88rem', color: currentVal > 0 ? 'var(--accent-text)' : 'var(--text-muted)' }}>{currentVal}%</span>
                   </div>
-                  <input
+                  <DebouncedInput
                     type="range"
                     min="0"
                     max="100"
                     value={currentVal}
-                    onChange={(e) => handleSliderChange(opt, e.target.value)}
+                    onChange={(val) => handleSliderChange(opt, val)}
                     style={{ width: '100%', cursor: 'pointer', margin: '0' }}
+                    delay={50}
                   />
                 </div>
               );
@@ -1084,11 +1117,11 @@ function App() {
             {/* If Other has value, ask what it is */}
             {(parseInt(formData[`${q.id}_Other`] || 0) > 0) && (
               <div style={{ marginTop: '12px' }}>
-                <input
+                <DebouncedInput
                   type="text"
                   placeholder="Please specify 'Other'..."
                   value={formData[`${q.id}_Other_Text`] || ''}
-                  onChange={(e) => setField(`${q.id}_Other_Text`, e.target.value)}
+                  onChange={(val) => setField(`${q.id}_Other_Text`, val)}
                 />
               </div>
             )}
@@ -1100,13 +1133,13 @@ function App() {
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-sm)', padding: '4px' }}>
               <span style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: '0.95rem', borderRight: '1px solid var(--glass-border)', flexShrink: 0 }}>+91</span>
-              <input
+              <DebouncedInput
                 type="tel"
                 name={q.id}
                 value={formData[q.id] || ''}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setField(q.id, val);
+                onChange={(val) => {
+                  const cleanVal = val.replace(/\D/g, '').slice(0, 10);
+                  setField(q.id, cleanVal);
                 }}
                 placeholder="10-digit mobile number"
                 maxLength="10"
@@ -1169,12 +1202,12 @@ function App() {
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Be the first to know when we launch. Completely free.</div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-                <input
+                <DebouncedInput
                   type="email"
                   name="waitlistEmail"
                   placeholder="Your Email"
                   value={formData.email || ''}
-                  onChange={(e) => setField('email', e.target.value)}
+                  onChange={(val) => setField('email', val)}
                   style={{
                     width: '100%',
                     maxWidth: '320px',
@@ -1186,14 +1219,14 @@ function App() {
                     fontSize: '0.95rem'
                   }}
                 />
-                <input
+                <DebouncedInput
                   type="tel"
                   name="waitlistPhone"
                   placeholder="Your Phone Number"
                   value={formData.phone || ''}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setField('phone', val);
+                  onChange={(val) => {
+                    const cleanVal = val.replace(/\D/g, '').slice(0, 10);
+                    setField('phone', cleanVal);
                   }}
                   style={{
                     width: '100%',
@@ -1305,22 +1338,22 @@ function App() {
                   <div style={{ marginTop: '8px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Your email (for 50% off coupon):</div>
-                      <input
+                      <DebouncedInput
                         type="email"
                         placeholder="you@email.com"
                         value={formData.supporterEmail || ''}
-                        onChange={(e) => setField('supporterEmail', e.target.value)}
+                        onChange={(val) => setField('supporterEmail', val)}
                         style={{ width: '100%', fontSize: '0.85rem' }}
                       />
                     </div>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>UPI Transaction ID / UTR:</div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
+                        <DebouncedInput
                           type="text"
                           placeholder="e.g. 423190812345"
                           value={formData.upiTxnId || ''}
-                          onChange={(e) => setField('upiTxnId', e.target.value)}
+                          onChange={(val) => setField('upiTxnId', val)}
                           style={{ flex: 1, fontSize: '0.85rem' }}
                         />
                         <div style={{
@@ -1356,11 +1389,11 @@ function App() {
 
       default:
         return (
-          <input
+          <DebouncedInput
             type={q.type}
             name={q.id}
             value={formData[q.id] || ''}
-            onChange={handleTextChange}
+            onChange={(val) => setField(q.id, val)}
             placeholder={q.placeholder || ''}
           />
         );
