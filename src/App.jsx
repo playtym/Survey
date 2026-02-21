@@ -5,7 +5,20 @@ import './index.css'
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
 
 // Generate a unique session ID so partial + complete rows can be correlated
-const SESSION_ID = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// Persist session ID to localStorage so refreshing maintains the same session
+const getSessionId = () => {
+  try {
+    let sid = localStorage.getItem('survey_sessionId');
+    if (!sid) {
+      sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      localStorage.setItem('survey_sessionId', sid);
+    }
+    return sid;
+  } catch (e) {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); 
+  }
+};
+const SESSION_ID = getSessionId();
 
 // Airtable config — split to bypass GitHub push protection scanner
 const _a = 'patTIXVnijoe';
@@ -29,49 +42,69 @@ const FIELD_MAP = {
   'investments_Other_Text': 'portfolioSplit_Other_Text',
 };
 
-// Fire-and-forget save to Airtable — maps each formData key to its own column
-function sendBeacon(data) {
-  try {
-    const { _status, _step, ...surveyData } = data;
-    // Build the fields object with individual columns
-    const fields = {
-      sessionId: SESSION_ID,
-      resp_status: _status || 'unknown',
-      step: _step || 0,
-      timestamp: new Date().toISOString(),
-    };
-    // Map each survey response to its Airtable column
-    for (const [key, val] of Object.entries(surveyData)) {
-      if (val === undefined || val === null || val === '') continue;
-      const col = FIELD_MAP[key] || key;
-      // Arrays → comma-separated string; numbers stay as numbers; booleans → string
-      if (Array.isArray(val)) {
-        fields[col] = val.join(', ');
-      } else if (typeof val === 'number') {
-        fields[col] = val;
-      } else {
-        fields[col] = String(val);
-      }
-    }
-    const body = JSON.stringify({ records: [{ fields }] });
-    // Use fetch with keepalive so delivery works even on page close
-    fetch(AIRTABLE_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body,
-      keepalive: true
-    }).catch(() => {});
-  } catch (e) { /* silent */ }
-}
-
 function App() {
-  const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState({});
+  const [step, setStep] = useState(() => {
+    try { return Number(localStorage.getItem('survey_step')) || 0; } catch { return 0; }
+  });
+  const [formData, setFormData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('survey_formData')) || {}; } catch { return {}; }
+  });
   const touchedRef = useRef(false);
   const submittedRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Persist state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('survey_step', step);
+      localStorage.setItem('survey_formData', JSON.stringify(formData));
+    } catch (e) { /* ignore localStorage errors */ }
+  }, [step, formData]);
+
+  // One-time save to Airtable on final submit
+  const submitToAirtable = async (data) => {
+    try {
+      const { _status, _step, ...surveyData } = data;
+      // Build the fields object with individual columns
+      const fields = {
+        sessionId: SESSION_ID,
+        resp_status: _status || 'unknown',
+        step: _step || 0,
+        timestamp: new Date().toISOString(),
+      };
+      // Map each survey response to its Airtable column
+      for (const [key, val] of Object.entries(surveyData)) {
+        if (val === undefined || val === null || val === '') continue;
+        const col = FIELD_MAP[key] || key;
+        // Arrays → comma-separated string; numbers stay as numbers; booleans → string
+        if (Array.isArray(val)) {
+          fields[col] = val.join(', ');
+        } else if (typeof val === 'number') {
+          fields[col] = val;
+        } else {
+          fields[col] = String(val);
+        }
+      }
+      
+      const response = await fetch(AIRTABLE_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ records: [{ fields }] })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Airtable error ${response.status}`);
+      }
+      
+      return true;
+    } catch (e) { 
+      console.error("Submission failed", e);
+      return false;
+    }
+  };
 
   const setField = useCallback((name, value) => {
     haptic();
@@ -660,35 +693,20 @@ function App() {
   const currentSection = sections[step];
   const isLastStep = step === sections.length - 1;
 
-  // --- Auto-save: partial responses on every step change ---
-  useEffect(() => {
-    if (step > 0 && !submittedRef.current && Object.keys(formData).length > 0) {
-      sendBeacon({ ...formData, _status: 'partial', _step: step });
-    }
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // --- Save on page exit (tab close, navigate away, app switch on mobile) ---
-  useEffect(() => {
-    const saveOnExit = () => {
-      if (!submittedRef.current && Object.keys(formDataRef.current).length > 0) {
-        sendBeacon({ ...formDataRef.current, _status: 'abandoned', _step: stepRef.current });
-      }
-    };
-    // visibilitychange fires reliably on mobile when user switches apps / closes tab
-    const onVisChange = () => { if (document.visibilityState === 'hidden') saveOnExit(); };
-    document.addEventListener('visibilitychange', onVisChange);
-    window.addEventListener('beforeunload', saveOnExit);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisChange);
-      window.removeEventListener('beforeunload', saveOnExit);
-    };
-  }, []);
-
   const handleSubmitSurvey = async () => {
-    console.log(formData);
-    submittedRef.current = true;
-    sendBeacon({ ...formData, _status: 'complete' });
-    setSubmitted(true);
+    setIsSubmitting(true);
+    // Only save when user explicitly submits
+    const success = await submitToAirtable({ ...formData, _status: 'complete' });
+    if (success) {
+      submittedRef.current = true;
+      setSubmitted(true);
+      // Optional: clear local storage if you want to prevent re-submission or allow fresh start
+      localStorage.removeItem('survey_step');
+      localStorage.removeItem('survey_formData');
+    } else {
+      alert("Submission failed. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   const handleNext = () => {
@@ -1236,8 +1254,10 @@ function App() {
           </div>
           
           <div className="navigation-buttons">
-            <button onClick={prevStep} disabled={step === 0}>← Back</button>
-            <button onClick={handleNext} className="primary-btn">{isLastStep ? 'Submit ✓' : 'Continue →'}</button>
+            <button onClick={prevStep} disabled={step === 0 || isSubmitting}>← Back</button>
+            <button onClick={handleNext} disabled={isSubmitting} className="primary-btn">
+              {isSubmitting ? 'Submitting...' : (isLastStep ? 'Submit ✓' : 'Continue →')}
+            </button>
           </div>
         </div>
       )}
