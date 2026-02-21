@@ -22,7 +22,7 @@ const SESSION_ID = getSessionId();
 
 // Persist Airtable record ID so upserts update the same row (survives refresh)
 const getRecordId = () => { try { return localStorage.getItem('survey_recordId') || null; } catch { return null; } };
-const setRecordId = (id) => { try { localStorage.setItem('survey_recordId', id); } catch {} };
+const setRecordId = (id) => { try { if (!id) { localStorage.removeItem('survey_recordId'); } else { localStorage.setItem('survey_recordId', id); } } catch {} };
 
 // Airtable config — split to bypass GitHub push protection scanner
 const _a = 'patTIXVnijoe';
@@ -202,7 +202,7 @@ function App() {
           }
 
           const errorBody = await response.json().catch(() => ({}));
-          console.error(`Airtable ${method} failed:`, response.status, errorBody);
+          console.error(`Airtable ${method} failed:`, response.status, JSON.stringify(errorBody));
 
           // On 422 UNKNOWN_FIELD_NAME: strip the offending field and retry
           if (response.status === 422 && errorBody?.error?.message) {
@@ -215,17 +215,11 @@ function App() {
             }
           }
 
-          // On 422 PATCH where record might be missing, clear recordId and retry as POST
-          if (response.status === 422 && method === 'PATCH') {
-            console.warn('PATCH 422 — clearing record ID, will retry as POST');
+          // On any 422/404 during PATCH, clear recordId and retry as POST
+          if ((response.status === 422 || response.status === 404) && method === 'PATCH') {
+            console.warn(`PATCH ${response.status} — clearing record ID, will retry as POST`);
             setRecordId(null);
-            continue;
-          }
-
-          // On 404 PATCH (record deleted), clear recordId and retry as POST
-          if (response.status === 404 && method === 'PATCH') {
-            console.warn('Record not found, clearing ID and retrying as POST');
-            setRecordId(null);
+            localStorage.removeItem('survey_recordId'); // belt-and-suspenders
             continue;
           }
 
