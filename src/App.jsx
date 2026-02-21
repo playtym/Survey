@@ -861,6 +861,12 @@ function App() {
     const missingFields = currentQuestions.filter(q => {
       if (q.type === 'waitlist-cta' || q.id === 'userSuggestions' || q.id === 'pmsReturn') return false; 
       
+      // For multi-bubble-input / bubble-input: free text in _other counts as a valid answer
+      if (q.type === 'multi-bubble-input' || q.type === 'bubble-input') {
+        const otherVal = formData[`${q.id}_other`];
+        if (otherVal && typeof otherVal === 'string' && otherVal.trim() !== '') return false; // valid
+      }
+
       const val = formData[q.id];
       if (val === undefined || val === null) return true;
       if (Array.isArray(val)) return val.length === 0;
