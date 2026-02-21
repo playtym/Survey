@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import './index.css'
 
 // Haptic feedback
-const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch(e) {} };
+const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch (e) { } };
 
 // Generate a unique session ID so partial + complete rows can be correlated
 // Persist session ID to localStorage so refreshing maintains the same session
@@ -15,14 +15,14 @@ const getSessionId = () => {
     }
     return sid;
   } catch (e) {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); 
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 };
 const SESSION_ID = getSessionId();
 
 // Persist Airtable record ID so upserts update the same row (survives refresh)
 const getRecordId = () => { try { return localStorage.getItem('survey_recordId') || null; } catch { return null; } };
-const setRecordId = (id) => { try { if (!id) { localStorage.removeItem('survey_recordId'); } else { localStorage.setItem('survey_recordId', id); } } catch {} };
+const setRecordId = (id) => { try { if (!id) { localStorage.removeItem('survey_recordId'); } else { localStorage.setItem('survey_recordId', id); } } catch { } };
 
 // Airtable config — split to bypass GitHub push protection scanner
 const _a = 'patTIXVnijoe';
@@ -62,7 +62,7 @@ function App() {
   const touchedRef = useRef(false);
   const submittedRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Persist state to localStorage whenever it changes
   useEffect(() => {
     try {
@@ -159,12 +159,14 @@ function App() {
           console.log('Skipping unknown field:', col, '(from key:', key + ')');
           continue;
         }
-        // Arrays → comma-separated string; numbers → number only for Airtable number columns, else string; booleans → string
-        const AIRTABLE_NUMBER_COLS = new Set(['step', 'kids', 'ccCount', 'noOfSIPs']);
+        // Skip zero-value portfolio splits and counters — 0 means "not set / no allocation"
+        if (typeof val === 'number' && val === 0) continue;
+
         if (Array.isArray(val)) {
           fields[col] = val.join(', ');
         } else if (typeof val === 'number') {
-          fields[col] = AIRTABLE_NUMBER_COLS.has(col) ? val : String(val);
+          // Send numbers as strings — safe for both text and number Airtable columns
+          fields[col] = String(val);
         } else if (typeof val === 'boolean') {
           fields[col] = val ? 'Yes' : 'No';
         } else {
@@ -231,7 +233,7 @@ function App() {
       };
 
       return await sendWithRetry(fields);
-    } catch (e) { 
+    } catch (e) {
       console.error('Submission failed', e);
       return false;
     }
@@ -346,7 +348,7 @@ function App() {
       title: 'Family & Household',
       questions: [
         { id: 'workingSpouse', label: 'Is your spouse working?', type: 'bubble', options: yesNo },
-        
+
         // Combined household income — the key ask
         ...(formData.workingSpouse === 'Yes' ? [
           { id: 'householdIncome', label: 'Combined Household Income Range', type: 'bubble', options: ['< 20 LPA', '20-50 LPA', '50 LPA - 1 Cr', '1-2 Cr', '2-5 Cr', '> 5 Cr'] }
@@ -355,7 +357,7 @@ function App() {
         { id: 'kids', label: 'Number of Kids', type: 'counter' },
         { id: 'dependents', label: 'Do you financially support others?', type: 'multi-bubble', options: ['Parents', 'In-laws', 'Siblings', 'No one else'] },
         { id: 'jointAccount', label: 'Do you hold any Joint Accounts (Bank / Investments)?', type: 'multi-bubble', options: ['Yes - with Spouse', 'Yes - with Parents', 'No'] },
-        
+
         // WHY: No joint accounts but married — why manage separately?
         ...(formData.jointAccount && formData.jointAccount.includes('No') && formData.jointAccount.length === 1 ? [
           { id: 'whyNoJoint', label: 'Why do you keep finances completely separate?', type: 'bubble-input', options: ['Independence / preference', 'Different spending habits', 'Never thought about it', 'Complexity of merging'] }
@@ -374,7 +376,7 @@ function App() {
         { id: 'financialLiteracy', label: 'How would you rate your financial knowledge?', type: 'bubble', options: ['1 — Clueless', '2 — Beginner', '3 — Moderate', '4 — Confident', '5 — Expert'] },
         { id: 'financialGoals', label: 'Top Financial Goals?', type: 'multi-bubble-input', options: ['Retirement', 'Buying a Home', 'Kids Education', 'Early Financial Freedom (FIRE)', 'Luxury Travel', 'Wealth Creation', 'Emergency Fund'] },
         { id: 'emergencyFund', label: 'Do you have an Emergency Fund?', type: 'bubble', options: ['Yes - 6+ months', 'Yes - 3-6 months', 'Yes - < 3 months', 'No'] },
-        
+
         // WHY: No emergency fund but has kids — risky behavior
         ...(formData.emergencyFund === 'No' && formData.kids > 0 ? [
           { id: 'whyNoEmergencyFund', label: 'With a family, why no emergency fund?', type: 'bubble-input', options: ['Haven\'t gotten around to it', 'All money is invested', 'Rely on family support', 'Don\'t know how much to keep'] }
@@ -382,7 +384,7 @@ function App() {
 
         { id: 'salarySplitInvest', label: 'What % of income goes to Investments?', type: 'bubble', options: ['< 10%', '10-30%', '30-50%', '> 50%'] },
         { id: 'salarySplitEMI', label: 'What % goes to EMIs / Debt?', type: 'bubble', options: ['0% (Debt Free)', '< 20%', '20-40%', '> 40%'] },
-        
+
         // WHY: Very high EMI burden
         ...(formData.salarySplitEMI === '> 40%' ? [
           { id: 'highEMIReason', label: '40%+ on EMIs is significant. What are these for?', type: 'multi-bubble-input', options: ['Home Loan', 'Car Loan', 'Education Loan', 'Personal Loan', 'Credit Card Dues', 'Multiple loans stacking up'] }
@@ -406,7 +408,7 @@ function App() {
         { id: 'bankAc', label: 'Bank Account(s)', type: 'multi-bubble-input', options: commonBanks },
         ...(formData.bankAc && formData.bankAc.length > 1 ? [{ id: 'bankMultiReason', label: 'Why multiple bank accounts?', type: 'multi-bubble-input', options: ['Salary Account', 'Better Rates / Offers', 'Safety / Diversification', 'Old accounts still open'] }] : []),
         { id: 'cashInSavings', label: 'Cash sitting in Savings (Lakhs)', type: 'bubble', options: ['< 1L', '1-5L', '5-10L', '10-25L', '> 25L'] },
-        
+
         // WHY: Large amount idle in savings
         ...(formData.cashInSavings && ['5-10L', '10-25L', '> 25L'].includes(formData.cashInSavings) ? [{ id: 'cashReason', label: `Why keep ${formData.cashInSavings} in Savings?`, type: 'bubble-input', options: ['Emergency Fund', 'Upcoming Expense', 'Haven\'t gotten around to investing', 'Safety / Trust', 'Need Liquidity', 'Lazy / Don\'t know better options'] }] : []),
 
@@ -428,17 +430,18 @@ function App() {
       title: 'Credit Cards',
       questions: [
         { id: 'ccCount', label: 'How many credit cards?', type: 'counter' },
-        { id: 'ccNames', label: 'Which cards do you hold?', type: 'multi-bubble-input', options: [
+        {
+          id: 'ccNames', label: 'Which cards do you hold?', type: 'multi-bubble-input', options: [
             'HDFC Infinia', 'HDFC DCB', 'HDFC Regalia/Gold', 'HDFC Millennia', 'HDFC Swiggy',
             'SBI Cashback', 'SBI Prime/Elite', 'SBI SimplyClick',
             'Axis Magnus', 'Axis Atlas', 'Axis ACE', 'Axis Flipkart',
             'ICICI Amazon Pay', 'ICICI Emerald', 'ICICI Sapphiro/Rubyx',
             'Amex Platinum Travel', 'Amex MRCC', 'Amex Gold/Charge',
             'OneCard', 'Tata Neu'
-          ] 
+          ]
         },
         { id: 'ccBillPay', label: 'Do you always pay full CC bill on time?', type: 'bubble', options: ['Yes - always full', 'Usually full', 'Sometimes minimum', 'Often revolve balance'] },
-        
+
         // WHY: Revolving CC balance — dangerous behavior
         ...(formData.ccBillPay === 'Sometimes minimum' || formData.ccBillPay === 'Often revolve balance' ? [
           { id: 'whyRevolve', label: 'Why not pay in full? (CC interest is 36-42% PA)', type: 'bubble-input', options: ['Cash flow crunch', 'Unplanned expenses', 'Habit / lazy', 'Didn\'t realize the interest rate', 'EMI conversions are OK'] }
@@ -455,7 +458,7 @@ function App() {
       title: 'Loans & Debt',
       questions: [
         { id: 'activeLoans', label: 'Do you have any active loans?', type: 'multi-bubble', options: ['Home Loan', 'Car Loan', 'Education Loan', 'Personal Loan', 'Gold Loan', 'None'] },
-        
+
         // Home Loan deep dive
         ...(formData.activeLoans?.includes('Home Loan') ? [
           { id: 'homeLoanOutstanding', label: 'Home Loan outstanding', type: 'bubble', options: ['< 25L', '25-50L', '50L-1Cr', '1-2Cr', '> 2Cr'] },
@@ -477,7 +480,7 @@ function App() {
         ...(formData.activeLoans?.includes('None') ? [
           { id: 'debtFreeReason', label: 'Debt-free by choice or circumstance?', type: 'bubble-input', options: ['Principle — never borrow', 'Paid off everything', 'Haven\'t needed one yet', 'Parents helped financially', 'Rent instead of own'] }
         ] : []),
-        
+
         // Total EMI tracking
         ...(formData.activeLoans && !formData.activeLoans.includes('None') && formData.activeLoans.length > 0 ? [
           { id: 'emiTracking', label: 'How do you track all your EMIs?', type: 'bubble-input', options: ['Bank app reminders', 'Auto-debit / don\'t think about it', 'Spreadsheet', 'CA / Advisor tracks', 'Mental notes / memory'] },
@@ -491,17 +494,17 @@ function App() {
       id: 'investments',
       title: 'Investment Portfolio',
       questions: [
-        { 
-          id: 'investments', 
-          label: 'What is your portfolio allocation? (Must sum to 100%)', 
-          type: 'box-split', 
-          options: ['Fixed Deposits', 'Mutual Funds', 'Stocks', 'PMS / AIF', 'Real Estate', 'Crypto', 'Gold', 'Other'] 
+        {
+          id: 'investments',
+          label: 'What is your portfolio allocation? (Must sum to 100%)',
+          type: 'box-split',
+          options: ['Fixed Deposits', 'Mutual Funds', 'Stocks', 'PMS / AIF', 'Real Estate', 'Crypto', 'Gold', 'Other']
         },
         ...(formData.investments && formData.investments.length > 0 ? [{
-           id: 'portfolioDecision',
-           label: 'How did you arrive at this split?',
-           type: 'bubble-input',
-           options: ['Age-based rule of thumb', 'Risk Appetite', 'Goal-based timeline', 'Advisor / Wealth Manager', 'Opportunistic / no framework', 'Tax efficiency driven']
+          id: 'portfolioDecision',
+          label: 'How did you arrive at this split?',
+          type: 'bubble-input',
+          options: ['Age-based rule of thumb', 'Risk Appetite', 'Goal-based timeline', 'Advisor / Wealth Manager', 'Opportunistic / no framework', 'Tax efficiency driven']
         }] : []),
         ...(formData.investments && formData.investments.length > 0 ? [{
           id: 'portfolioReviewFreq',
@@ -672,7 +675,7 @@ function App() {
         ...(formData.insuranceTypes && !formData.insuranceTypes?.includes('None') && formData.insuranceTypes?.length > 0 ? [
           { id: 'insuranceDiscovery', label: 'How did you find / buy policies?', type: 'multi-bubble-input', options: ['Agent', 'PolicyBazaar / Aggregator', 'Bank Cross-sell', 'Corporate / Employer', 'Self Research'] },
           { id: 'insuranceAdequacy', label: 'Do you feel adequately covered?', type: 'bubble', options: ['Yes', 'Probably not', 'Not sure', 'Definitely under-insured'] },
-          
+
           // WHY: Under-insured (Probably or Definitely)
           ...(['Definitely under-insured', 'Probably not'].includes(formData.insuranceAdequacy) ? [
             { id: 'whyUnderInsured', label: 'What makes you feel under-insured?', type: 'bubble-input', options: ['Rely mainly on employer cover', 'Premium costs too high', 'Haven\'t reviewed in years', 'Family needs have grown', 'Just a gut feeling'] }
@@ -692,27 +695,27 @@ function App() {
       title: 'Taxes & Filing',
       questions: [
         { id: 'taxRegime', label: 'Which tax regime do you use?', type: 'bubble', options: ['Old Regime', 'New Regime', 'Not sure'] },
-        
+
         // WHY: Not sure about their own regime
         ...(formData.taxRegime === 'Not sure' ? [
           { id: 'whyUnsureRegime', label: 'Not knowing your tax regime means potential savings are being missed. Who decides for you?', type: 'bubble-input', options: ['CA decides / I trust them', 'Employer chooses default', 'Never compared both', 'Too confusing'] }
         ] : []),
 
         { id: 'taxFiling', label: 'How do you file taxes?', type: 'bubble-input', options: ['Self (Govt Portal)', 'Online Portal (ClearTax etc.)', 'CA', 'Family Member', 'Service provided by Employer'] },
-        
+
         // Conditional fee question
-        ...((formData.taxFiling === 'CA' || formData.taxFiling?.includes('Portal')) ? [{ 
-          id: 'taxFilingFee', 
-          label: `How much do you pay for ${formData.taxFiling === 'CA' ? 'CA' : 'Portal'} services annually?`, 
-          type: 'bubble-input', 
-          options: ['< 1k', '1k-3k', '3k-5k', '5k-10k', '> 10k'] 
+        ...((formData.taxFiling === 'CA' || formData.taxFiling?.includes('Portal')) ? [{
+          id: 'taxFilingFee',
+          label: `How much do you pay for ${formData.taxFiling === 'CA' ? 'CA' : 'Portal'} services annually?`,
+          type: 'bubble-input',
+          options: ['< 1k', '1k-3k', '3k-5k', '5k-10k', '> 10k']
         }] : []),
 
-        ...(formData.taxFiling === 'CA' ? [{ 
-          id: 'caProactive', 
-          label: 'Does your CA proactively suggest tax optimization?', 
-          type: 'bubble', 
-          options: ['Yes', 'No', 'Sometimes'] 
+        ...(formData.taxFiling === 'CA' ? [{
+          id: 'caProactive',
+          label: 'Does your CA proactively suggest tax optimization?',
+          type: 'bubble',
+          options: ['Yes', 'No', 'Sometimes']
         }] : []),
 
         // WHY: CA doesn't optimize but still using them
@@ -733,7 +736,7 @@ function App() {
       questions: [
         { id: 'aggregatorOpenness', label: 'Would you use Account Aggregator (OTP-based fetch) for auto tax filing?', type: 'bubble', options: ['Yes, comfortable', 'Maybe if secure', 'No, privacy concern'] },
         { id: 'emailShare', label: 'Would you share read-only email access for tax statements?', type: 'bubble', options: ['Yes', 'Maybe with controls', 'No'] },
-        
+
         // WHY: Won't share anything — trust issue
         ...(formData.aggregatorOpenness === 'No, privacy concern' && formData.emailShare === 'No' ? [
           { id: 'whyNoDataShare', label: 'What would make you comfortable sharing data?', type: 'bubble-input', options: ['Govt-backed platform', 'Data deleted after filing', 'Trusted brand (Google/Apple level)', 'Nothing - will never share', 'On-device processing only'] }
@@ -799,9 +802,9 @@ function App() {
       id: 'waitlist',
       title: 'Take Command',
       questions: [
-        { 
-          id: 'waitlist', 
-          label: '', 
+        {
+          id: 'waitlist',
+          label: '',
           type: 'waitlist-cta',
           content: {
             lines: [
@@ -829,7 +832,7 @@ function App() {
   useEffect(() => {
     // Don't auto-save on step 0 (user hasn't answered anything yet) or after final submit
     if (step === 0 || submittedRef.current) return;
-    
+
     // Debounce: wait 1.5s after last step change before saving
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
@@ -862,8 +865,8 @@ function App() {
     // Validation: a field is valid if it exists in formData and is not empty
     const currentQuestions = sections[step].questions || [];
     const missingFields = currentQuestions.filter(q => {
-      if (q.type === 'waitlist-cta' || q.id === 'userSuggestions' || q.id === 'pmsReturn') return false; 
-      
+      if (q.type === 'waitlist-cta' || q.id === 'userSuggestions' || q.id === 'pmsReturn') return false;
+
       // For multi-bubble-input / bubble-input: free text in _other counts as a valid answer
       if (q.type === 'multi-bubble-input' || q.type === 'bubble-input') {
         const otherVal = formData[`${q.id}_other`];
@@ -896,7 +899,7 @@ function App() {
         return (
           <div className="bubble-container" {...delegatedHandlers}>
             {q.options.map(opt => (
-              <div 
+              <div
                 key={opt}
                 className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
                 data-field={q.id}
@@ -908,13 +911,13 @@ function App() {
             ))}
           </div>
         );
-      
+
       case 'bubble-input':
         return (
           <div className="bubble-container-input">
-             <div className="bubble-container" {...delegatedHandlers}>
+            <div className="bubble-container" {...delegatedHandlers}>
               {q.options.map(opt => (
-                <div 
+                <div
                   key={opt}
                   className={`bubble ${formData[q.id] === opt ? 'selected' : ''}`}
                   data-field={q.id}
@@ -925,9 +928,9 @@ function App() {
                 </div>
               ))}
             </div>
-            <input 
-              type="text" 
-              placeholder="Other / Type here..." 
+            <input
+              type="text"
+              placeholder="Other / Type here..."
               value={formData[q.id] || ''}
               onChange={(e) => setField(q.id, e.target.value)}
             />
@@ -938,7 +941,7 @@ function App() {
         return (
           <div className="bubble-container" {...delegatedHandlers}>
             {q.options.map(opt => (
-              <div 
+              <div
                 key={opt}
                 className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
                 data-field={q.id}
@@ -956,7 +959,7 @@ function App() {
           <div className="bubble-container-input">
             <div className="bubble-container" {...delegatedHandlers}>
               {q.options.map(opt => (
-                <div 
+                <div
                   key={opt}
                   className={`bubble ${(formData[q.id] || []).includes(opt) ? 'selected' : ''}`}
                   data-field={q.id}
@@ -967,9 +970,9 @@ function App() {
                 </div>
               ))}
             </div>
-             <input 
-              type="text" 
-              placeholder="Other Reasons..." 
+            <input
+              type="text"
+              placeholder="Other Reasons..."
               value={formData[`${q.id}_other`] || ''}
               onChange={(e) => setField(`${q.id}_other`, e.target.value)}
             />
@@ -984,16 +987,16 @@ function App() {
             <button className="counter-btn" onClick={() => setField(q.id, (formData[q.id] || 0) + 1)}>+</button>
           </div>
         );
-      
+
       case 'range':
         return (
           <div style={{ width: '100%' }}>
-             <input 
-              type="range" 
-              min={q.min} 
-              max={q.max} 
+            <input
+              type="range"
+              min={q.min}
+              max={q.max}
               step={q.step}
-              value={formData[q.id] || q.min} 
+              value={formData[q.id] || q.min}
               onChange={handleTextChange}
               name={q.id}
             />
@@ -1003,37 +1006,37 @@ function App() {
 
       case 'textarea':
         return (
-          <textarea 
-            name={q.id} 
-            value={formData[q.id] || ''} 
+          <textarea
+            name={q.id}
+            value={formData[q.id] || ''}
             onChange={handleTextChange}
-            rows={3} 
+            rows={3}
             placeholder="Type here..."
           />
         );
 
       case 'box-split':
         const total = q.options.reduce((sum, opt) => sum + (parseInt(formData[`${q.id}_${opt}`] || 0) || 0), 0);
-        
+
         const handleSliderChange = (opt, newValue) => {
           const val = parseInt(newValue) || 0;
           const otherTotal = q.options.reduce((sum, o) => {
-             if (o === opt) return sum;
-             return sum + (parseInt(formData[`${q.id}_${o}`] || 0) || 0);
+            if (o === opt) return sum;
+            return sum + (parseInt(formData[`${q.id}_${o}`] || 0) || 0);
           }, 0);
-          
+
           // Constrain value so total doesn't exceed 100
           const maxAllowed = 100 - otherTotal;
           const constrainedVal = Math.min(val, maxAllowed);
-          
+
           setField(`${q.id}_${opt}`, constrainedVal);
 
           // Update the main investments array based on non-zero values
           // We need this to conditionally show next sections
           const currentInvestments = q.options
             .filter(o => {
-               const v = o === opt ? constrainedVal : (parseInt(formData[`${q.id}_${o}`] || 0) || 0);
-               return v > 0; 
+              const v = o === opt ? constrainedVal : (parseInt(formData[`${q.id}_${o}`] || 0) || 0);
+              return v > 0;
             });
           setField('investments', currentInvestments);
         };
@@ -1052,9 +1055,9 @@ function App() {
                     <label style={{ fontWeight: '500', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{opt}</label>
                     <span style={{ fontWeight: '600', fontSize: '0.88rem', color: currentVal > 0 ? 'var(--accent-text)' : 'var(--text-muted)' }}>{currentVal}%</span>
                   </div>
-                  <input 
-                    type="range" 
-                    min="0" 
+                  <input
+                    type="range"
+                    min="0"
                     max="100"
                     value={currentVal}
                     onChange={(e) => handleSliderChange(opt, e.target.value)}
@@ -1063,10 +1066,10 @@ function App() {
                 </div>
               );
             })}
-            
-            <div style={{ 
-              marginTop: '16px', 
-              padding: '12px 16px', 
+
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 16px',
               background: total === 100 ? 'var(--success-bg)' : 'var(--error-bg)',
               borderRadius: 'var(--radius-sm)',
               textAlign: 'center',
@@ -1081,9 +1084,9 @@ function App() {
             {/* If Other has value, ask what it is */}
             {(parseInt(formData[`${q.id}_Other`] || 0) > 0) && (
               <div style={{ marginTop: '12px' }}>
-                <input 
-                  type="text" 
-                  placeholder="Please specify 'Other'..." 
+                <input
+                  type="text"
+                  placeholder="Please specify 'Other'..."
                   value={formData[`${q.id}_Other_Text`] || ''}
                   onChange={(e) => setField(`${q.id}_Other_Text`, e.target.value)}
                 />
@@ -1097,10 +1100,10 @@ function App() {
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-sm)', padding: '4px' }}>
               <span style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: '0.95rem', borderRight: '1px solid var(--glass-border)', flexShrink: 0 }}>+91</span>
-              <input 
-                type="tel" 
+              <input
+                type="tel"
                 name={q.id}
-                value={formData[q.id] || ''} 
+                value={formData[q.id] || ''}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                   setField(q.id, val);
@@ -1155,59 +1158,59 @@ function App() {
               </div>
             )}
             {/* Free Waitlist */}
-            <div style={{ 
-              padding: '24px 20px', 
-              background: 'var(--surface)', 
-              border: '1px solid var(--glass-border)', 
+            <div style={{
+              padding: '24px 20px',
+              background: 'var(--surface)',
+              border: '1px solid var(--glass-border)',
               borderRadius: 'var(--radius)',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>Join the Waitlist</div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Be the first to know when we launch. Completely free.</div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-                <input 
+                <input
                   type="email"
                   name="waitlistEmail"
                   placeholder="Your Email"
                   value={formData.email || ''}
                   onChange={(e) => setField('email', e.target.value)}
-                   style={{
-                      width: '100%',
-                      maxWidth: '320px',
-                      padding: '12px',
-                      background: 'var(--bg)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text)',
-                      fontSize: '0.95rem'
-                   }}
+                  style={{
+                    width: '100%',
+                    maxWidth: '320px',
+                    padding: '12px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text)',
+                    fontSize: '0.95rem'
+                  }}
                 />
-                 <input 
+                <input
                   type="tel"
                   name="waitlistPhone"
                   placeholder="Your Phone Number"
                   value={formData.phone || ''}
                   onChange={(e) => {
-                     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                     setField('phone', val);
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setField('phone', val);
                   }}
-                   style={{
-                      width: '100%',
-                      maxWidth: '320px',
-                      padding: '12px',
-                      background: 'var(--bg)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text)',
-                      fontSize: '0.95rem'
-                   }}
+                  style={{
+                    width: '100%',
+                    maxWidth: '320px',
+                    padding: '12px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text)',
+                    fontSize: '0.95rem'
+                  }}
                 />
               </div>
 
-              <div style={{ 
+              <div style={{
                 marginTop: '16px',
-                padding: '12px 24px', 
+                padding: '12px 24px',
                 background: (formData.email && formData.phone) ? 'var(--accent)' : 'var(--surface-hover)',
                 border: '1px solid var(--glass-border)',
                 borderRadius: 'var(--radius-sm)',
@@ -1227,8 +1230,8 @@ function App() {
             </div>
 
             {/* Paid: Early Supporter via UPI */}
-            <div style={{ 
-              padding: '20px', 
+            <div style={{
+              padding: '20px',
               background: paymentDone ? 'var(--success-bg)' : 'linear-gradient(135deg, rgba(124, 92, 252, 0.08), rgba(167, 139, 250, 0.05))',
               border: `1px solid ${paymentDone ? 'var(--success-border)' : 'rgba(124, 92, 252, 0.25)'}`,
               borderRadius: 'var(--radius)',
@@ -1237,9 +1240,9 @@ function App() {
               overflow: 'hidden'
             }}>
               {!paymentDone && (
-                <div style={{ 
-                  position: 'absolute', top: '8px', right: '-28px', 
-                  background: 'linear-gradient(135deg, var(--accent), #a78bfa)', 
+                <div style={{
+                  position: 'absolute', top: '8px', right: '-28px',
+                  background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
                   color: 'white', fontSize: '0.65rem', fontWeight: '700',
                   padding: '3px 32px', transform: 'rotate(45deg)',
                   letterSpacing: '0.05em'
@@ -1249,15 +1252,15 @@ function App() {
                 {paymentDone ? '🎉 You\'re an Early Supporter!' : 'Become an Early Supporter'}
               </div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: paymentDone ? '0' : '6px' }}>
-                {paymentDone 
-                  ? 'Thank you! You\'ll get 50% off on tax filing when we launch.' 
+                {paymentDone
+                  ? 'Thank you! You\'ll get 50% off on tax filing when we launch.'
                   : 'Pay ₹100 via UPI and get 50% off on tax filing when we launch.'}
               </div>
               {!paymentDone && (
                 <>
                   <div style={{ fontSize: '1.6rem', fontWeight: '700', color: 'var(--accent-text)', margin: '10px 0 4px' }}>₹100</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '14px', textDecoration: 'line-through' }}>Tax filing at ₹1,500 → ₹750 for you</div>
-                  
+
                   {/* UPI Pay Button */}
                   {/* QR Code */}
                   <div style={{ margin: '4px 0 16px', textAlign: 'center' }}>
@@ -1297,14 +1300,14 @@ function App() {
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px', textAlign: 'center' }}>
                     UPI ID: <span style={{ color: 'var(--text-secondary)', fontWeight: '500', userSelect: 'all' }}>{UPI_ID}</span>
                   </div>
-                  
+
                   {/* After paying, enter email + UTR */}
                   <div style={{ marginTop: '8px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Your email (for 50% off coupon):</div>
-                      <input 
-                        type="email" 
-                        placeholder="you@email.com" 
+                      <input
+                        type="email"
+                        placeholder="you@email.com"
                         value={formData.supporterEmail || ''}
                         onChange={(e) => setField('supporterEmail', e.target.value)}
                         style={{ width: '100%', fontSize: '0.85rem' }}
@@ -1313,15 +1316,15 @@ function App() {
                     <div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>UPI Transaction ID / UTR:</div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. 423190812345" 
+                        <input
+                          type="text"
+                          placeholder="e.g. 423190812345"
                           value={formData.upiTxnId || ''}
                           onChange={(e) => setField('upiTxnId', e.target.value)}
                           style={{ flex: 1, fontSize: '0.85rem' }}
                         />
-                        <div style={{ 
-                          padding: '10px 16px', 
+                        <div style={{
+                          padding: '10px 16px',
                           background: 'var(--accent-soft)',
                           border: '1px solid var(--accent)',
                           borderRadius: 'var(--radius-sm)',
@@ -1353,10 +1356,10 @@ function App() {
 
       default:
         return (
-          <input 
-            type={q.type} 
-            name={q.id} 
-            value={formData[q.id] || ''} 
+          <input
+            type={q.type}
+            name={q.id}
+            value={formData[q.id] || ''}
             onChange={handleTextChange}
             placeholder={q.placeholder || ''}
           />
@@ -1375,20 +1378,20 @@ function App() {
       </div>
 
       <div className="progress-bar">
-        <div 
-          className="progress-fill" 
+        <div
+          className="progress-fill"
           style={{ width: `${((step + 1) / sections.length) * 100}%` }}
         ></div>
       </div>
-      
+
       {submitted ? (
         <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
           <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✦</div>
           <h2 style={{ borderBottom: 'none', marginBottom: '8px', paddingBottom: '0' }}>Thank You!</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.6', marginBottom: '20px' }}>
             Your responses have been recorded.
-            {paymentDone && <><br/>You're an Early Supporter — we'll reach out with your 50% off tax filing benefit.</>}
-            {formData.waitlistJoined && !paymentDone && <><br/>You're on the waitlist — we'll notify you at launch.</>}
+            {paymentDone && <><br />You're an Early Supporter — we'll reach out with your 50% off tax filing benefit.</>}
+            {formData.waitlistJoined && !paymentDone && <><br />You're on the waitlist — we'll notify you at launch.</>}
           </p>
           {formData.phone && (
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
@@ -1407,7 +1410,7 @@ function App() {
               </div>
             ))}
           </div>
-          
+
           <div className="navigation-buttons">
             <button onClick={prevStep} disabled={step === 0 || isSubmitting}>← Back</button>
             <button onClick={handleNext} disabled={isSubmitting} className="primary-btn">
