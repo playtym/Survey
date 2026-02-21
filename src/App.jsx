@@ -44,7 +44,13 @@ const FIELD_MAP = {
 
 function App() {
   const [step, setStep] = useState(() => {
-    try { return Number(localStorage.getItem('survey_step')) || 0; } catch { return 0; }
+    try {
+      const savedStep = Number(localStorage.getItem('survey_step')) || 0;
+      const savedData = localStorage.getItem('survey_formData');
+      // If no form data exists but step is non-zero, reset (e.g. after a completed submission cleared data)
+      if (savedStep > 0 && (!savedData || savedData === '{}')) return 0;
+      return savedStep;
+    } catch { return 0; }
   });
   const [formData, setFormData] = useState(() => {
     try { return JSON.parse(localStorage.getItem('survey_formData')) || {}; } catch { return {}; }
