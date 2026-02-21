@@ -68,9 +68,72 @@ function App() {
   }, [step, formData]);
 
   // One-time save to Airtable on final submit
-  // Internal keys that should NOT be sent to Airtable
-  // 'investments' is an internal array used for conditional rendering (the actual % splits are separate fields)
-  const SKIP_FIELDS = new Set(['investments', 'waitlistJoined']);
+  // WHITELIST: Only these column names exist in Airtable — anything else is silently dropped
+  const AIRTABLE_COLUMNS = new Set([
+    'sessionId', 'resp_status', 'step', 'timestamp',
+    // About You
+    'name_resp', 'age', 'place', 'profession', 'salary', 'married', 'dependents',
+    // Family
+    'workingSpouse', 'householdIncome', 'kids', 'jointAccount', 'whyNoJoint', 'financialDecisionMaker',
+    // Money & Goals
+    'moneyPersonality', 'financialLiteracy', 'financialGoals', 'financialGoals_other',
+    'emergencyFund', 'whyNoEmergencyFund', 'salarySplitInvest', 'salarySplitEMI',
+    'highEMIReason', 'highEMIReason_other', 'whyLowInvest', 'investmentStyle',
+    'biggestMoneyMistake', 'biggestMoneyMistake_other',
+    // Banking
+    'bankAc', 'bankAc_other', 'bankMultiReason', 'bankMultiReason_other',
+    'cashInSavings', 'cashReason', 'paymentModes', 'autoPay',
+    'autoPayReason', 'autoPayPartialReason', 'highIncomeNoAutoPay',
+    // Credit Cards
+    'ccCount', 'ccNames', 'ccNames_other', 'ccBillPay', 'whyRevolve',
+    'ccOptimisation', 'ccResearch', 'ccResearch_other',
+    // Loans
+    'activeLoans', 'homeLoanOutstanding', 'homeLoanRate', 'whyUnsureLoanRate',
+    'homeLoanReview', 'personalLoanReason', 'personalLoanRate',
+    'debtFreeReason', 'emiTracking', 'emiPrepayment',
+    // Portfolio
+    'investments', 'portfolioDecision', 'portfolioReviewFreq', 'whyNeverReview',
+    'portfolioSplit_FD', 'portfolioSplit_MF', 'portfolioSplit_Stocks', 'portfolioSplit_PMS',
+    'portfolioSplit_RE', 'portfolioSplit_Crypto', 'portfolioSplit_Gold',
+    'portfolioSplit_Other', 'portfolioSplit_Other_Text',
+    // FD
+    'fdWhere', 'fdWhere_other', 'fdInterest', 'reasonForFD', 'reasonForFD_other', 'fdReview', 'whyHeavyFD',
+    // MF
+    'mfPlatform', 'mfPlatform_other', 'mfMultiReason', 'mfMultiReason_other',
+    'mfType', 'mfType_other', 'sip_percent', 'whyNoSIP', 'noOfSIPs',
+    'mfDecision', 'mfDecision_other', 'regularVsDirect', 'trackXIRR', 'mfRebalancing', 'whyNoRebalance',
+    // Stocks
+    'stocksPlatform', 'stocksPlatform_other', 'stockMultiReason', 'stockMultiReason_other',
+    'stockFreq', 'stockDecision', 'stockDecision_other', 'tipsDamage',
+    'stockHowMuch', 'stockTrack', 'watchlist',
+    // PMS
+    'pmsType', 'pmsDecision', 'pmsReturn', 'pmsFees', 'pmsSatisfaction', 'whyStillPMS', 'reasonNoPMS',
+    // Real Estate
+    'reType', 'reDecision', 'reReview',
+    // Crypto
+    'cryptoPlatform', 'cryptoPlatform_other', 'cryptoType', 'cryptoType_other',
+    'cryptoDecision', 'cryptoTaxAware', 'cryptoReview',
+    // Gold
+    'goldType', 'goldDecision', 'goldReview',
+    // Insurance
+    'insuranceTypes', 'whyNoInsurance', 'whyNoHealth',
+    'insuranceDiscovery', 'insuranceDiscovery_other', 'insuranceAdequacy',
+    'whyUnderInsured', 'whyUnsureInsurance',
+    // Taxes
+    'taxRegime', 'whyUnsureRegime', 'taxFiling', 'taxFilingFee',
+    'caProactive', 'whyKeepCA', 'taxOptimization', 'taxHarvesting', 'taxSatisfaction',
+    // Tax Automation
+    'aggregatorOpenness', 'emailShare', 'whyNoDataShare', 'willingToPayTax',
+    // Product Concept
+    'painPoints', 'painPoints_other', 'singleView', 'whyNoDashboard',
+    'oneButtonPay', 'autoInvest', 'autoRebalance', 'aiAdvisor',
+    // Tool Expectations
+    'criticalFeatures', 'criticalFeatures_other', 'dataPrivacy', 'interactionPreference', 'advisoryStyle',
+    // Closing
+    'viewOnProduct', 'willingnessToPay', 'userSuggestions',
+    // Waitlist
+    'email', 'phone', 'waitlistJoined', 'supporterEmail', 'upiTxnId', 'supporterTier',
+  ]);
 
   const submitToAirtable = async (data) => {
     try {
@@ -85,8 +148,12 @@ function App() {
       // Map each survey response to its Airtable column
       for (const [key, val] of Object.entries(surveyData)) {
         if (val === undefined || val === null || val === '') continue;
-        if (SKIP_FIELDS.has(key)) continue; // Skip internal-only fields
         const col = FIELD_MAP[key] || key;
+        // Only send fields that exist as columns in Airtable
+        if (!AIRTABLE_COLUMNS.has(col)) {
+          console.log('Skipping unknown field:', col, '(from key:', key + ')');
+          continue;
+        }
         // Arrays → comma-separated string; numbers stay as numbers; booleans → string
         if (Array.isArray(val)) {
           fields[col] = val.join(', ');
